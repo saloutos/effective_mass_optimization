@@ -3,17 +3,11 @@ close all
 
 %% Add Libraries
 addpath(genpath('casadi'));
-%addpath(genpath('spatial_v2'));
+addpath(genpath('spatial_v2'));
 addpath(genpath('arm_4_functions'))
 addpath(genpath('arm_functions'))
 addpath(genpath('block_functions'))
 import casadi.*
-
-%% Build Robot Model
-%disp_box('Building Robot Model');
-%params = get_robot_params('mc3D');
-%model  = get_robot_model(params);
-%model = buildShowMotionModelMC3D(params, model, 0);
 
 %% define arm parameters
 % TODO: Use spatial v2?
@@ -28,6 +22,63 @@ l_AB = 0.5;             l_BC = 0.5;
 g = 9.81; % do I want gravity to start?
 % arrange in vector
 p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]';
+
+rad1 = 0.05;
+rad2 = 0.05;
+rad3 = 0.05;
+rad_mult = 1.2;
+
+%% Build Robot Model
+% TODO: Turn this into a function
+% TODO: Use this model for forward dynamics constraint
+% TODO: How to include rotor dynamics...
+model.NB = 3;                                  % number of bodies
+model.gravity = [0 0 -9.81];                   % gravity
+model.parent  = zeros(1,model.NB);             % parent body indices
+model.jtype   = repmat({'  '},model.NB,1);     % joint types
+model.Xtree   = repmat({eye(3)},model.NB,1);   % coordinate transforms
+model.I       = repmat({zeros(3)},model.NB,1); % spatial inertias
+nb = 0; % current body index
+
+model.appearance.base = ...
+    {'colour',[0.9 0.9 0.9],'cyl', [0 0 0;0 0 -0.3], 3*rad1};
+% Joint 1
+nb = nb + 1;
+model.parent(nb) = nb - 1;
+model.jtype{nb}  = 'r';
+model.Xtree{nb}  = eye(3);
+model.I{nb}      = mcI(m1, [l_O_m1 0], I1);
+cyl1 = [0 0 0;...
+    l_OA 0 0];
+cyl1b = [0 0 -rad_mult*rad1;...
+    0 0 rad_mult*rad1];
+model.appearance.body{nb} = {'colour',[1.0 0.1 0.1],...
+    'cyl', cyl1, rad1, 'cyl', cyl1b, rad1};
+% Joint 2
+nb = nb + 1;
+model.parent(nb) = nb - 1;
+model.jtype{nb}  = 'r';
+model.Xtree{nb}  = plnr(0, [l_OA 0]);
+model.I{nb}      = mcI(m2, [l_A_m2 0], I2);
+cyl2 = [0 0 0;...
+    l_AB 0 0];
+cyl2b = [0 0 -rad_mult*rad2;...
+    0 0 rad_mult*rad2];
+model.appearance.body{nb} = {'colour',[0.1 1.0 0.1],...
+    'cyl', cyl2, rad2, 'cyl', cyl2b, rad2};
+% Joint 3
+nb = nb + 1;
+model.parent(nb) = nb - 1;
+model.jtype{nb}  = 'r';
+model.Xtree{nb}  = plnr(0, [l_AB 0]);
+model.I{nb}      = mcI(m3, [l_B_m3 0], I3);
+cyl3 = [0 0 0;...
+    l_BC 0 0];
+cyl3b = [0 0 -rad_mult*rad3;...
+    0 0 rad_mult*rad3];
+model.appearance.body{nb} = {'colour',[0.1 0.1 1.0],...
+    'cyl', cyl3, rad3, 'cyl', cyl3b, rad3};
+
 
 %% define object parameters
 xc = 0.8; yc = 0; radius = 0.05;        % cylinder geometry parameters
@@ -367,7 +418,7 @@ sol = opti.solve();
 %     %sol = opti.solve_limited();
 %     sol = opti.solve();
 % catch
-%     disp('Did not solve - try debug solution') 
+%     disp('Did not solve - try debug solution')
 % end
 % TODO: setup this logic for catching error to handle infeasible solution
 
@@ -376,39 +427,40 @@ X_star = sol.value(X);
 q_star(1:3,:) = sol.value(opt_var.q);
 dq_star(1:3,:) = sol.value(opt_var.dq);
 u_star(1:3,:) = sol.value(opt_var.u);
+showmotion(model, time_vec, q_star);
 
-
+%% Functions
 function q_ik = inverse_kinematics_init(p,ee_i)
-    % pull out necessary parameters
-    l1 = p(14);
-    l2 = p(15);
-    l3 = p(16);
+% pull out necessary parameters
+l1 = p(14);
+l2 = p(15);
+l3 = p(16);
 
-    % pull out desired end-effector position
-    % note: will have to do interpolation eventually here
-    x_ee = ee_i(1);
-    y_ee = ee_i(2);
+% pull out desired end-effector position
+% note: will have to do interpolation eventually here
+x_ee = ee_i(1);
+y_ee = ee_i(2);
 
-    % set q1 initially
-    % calculate q2 and q3
-    q1_ik = 0.0; 
-    x_A = l1*cos(q1_ik);
-    y_A = l1*sin(q1_ik);
+% set q1 initially
+% calculate q2 and q3
+q1_ik = 0.0;
+x_A = l1*cos(q1_ik);
+y_A = l1*sin(q1_ik);
 
-    % alternatively, could set th3 = q1+q2+q3 so that the third link is
-    % perpendicular to the desired velocity (to start)
-    % could also warm start with a first solve to find the configuration
-    % with the third link close to parallel to the desired velocity
+% alternatively, could set th3 = q1+q2+q3 so that the third link is
+% perpendicular to the desired velocity (to start)
+% could also warm start with a first solve to find the configuration
+% with the third link close to parallel to the desired velocity
 
-    x_ee = x_ee-x_A; % distances taken from second joint
-    y_ee = y_ee-y_A;
+x_ee = x_ee-x_A; % distances taken from second joint
+y_ee = y_ee-y_A;
 
-    q3_ik = acos( (x_ee.^2 + y_ee.^2 - l2^2 - l3^2) / (2 * l2 * l3) ); % this can be +/-, leave as just + for now
-    q2_ik = atan2(y_ee,x_ee) - atan2( (l3*sin(q3_ik)), (l2+(l3*cos(q3_ik))) );
+q3_ik = acos( (x_ee.^2 + y_ee.^2 - l2^2 - l3^2) / (2 * l2 * l3) ); % this can be +/-, leave as just + for now
+q2_ik = atan2(y_ee,x_ee) - atan2( (l3*sin(q3_ik)), (l2+(l3*cos(q3_ik))) );
 
-    % outputs
-    q_ik = [q1_ik;q2_ik;q3_ik];
-    
+% outputs
+q_ik = [q1_ik;q2_ik;q3_ik];
+
 end
 
 
