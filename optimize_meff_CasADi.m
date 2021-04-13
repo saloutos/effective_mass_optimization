@@ -1,0 +1,419 @@
+clear
+close all
+
+%% Add Libraries
+addpath(genpath('casadi'));
+%addpath(genpath('spatial_v2'));
+addpath(genpath('arm_4_functions'))
+addpath(genpath('arm_functions'))
+addpath(genpath('block_functions'))
+import casadi.*
+
+%% Build Robot Model
+%disp_box('Building Robot Model');
+%params = get_robot_params('mc3D');
+%model  = get_robot_model(params);
+%model = buildShowMotionModelMC3D(params, model, 0);
+
+%% define arm parameters
+% TODO: Use spatial v2?
+m1 = 1;                 m2 = 1;
+m3 = 0.5;               m_motor = 0.5;
+I1 = 0.02;              I2 = 0.02;
+I3 = 0.01;              I_motor = 0.000625; % assuming radius r=0.05m
+Ir = 6.25e-6;           N = 6;
+l_O_m1 = 0.25;          l_A_m2 = 0.25;
+l_B_m3 = 0.25;          l_OA = 0.5;
+l_AB = 0.5;             l_BC = 0.5;
+g = 9.81; % do I want gravity to start?
+% arrange in vector
+p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]';
+
+%% define object parameters
+xc = 0.8; yc = 0; radius = 0.05;        % cylinder geometry parameters
+mo = 1; Io = 0.5*mo*radius*radius;    % inertial parameters
+mu_o = 0.5;                           % friction coefficient with surface
+% arrange in vector
+p_obj = [mo Io radius mu_o g xc yc]'; % appended starting location of block
+
+%% define trajectory
+num_pts = 31;
+Tf = 1;
+time_vec = linspace(0,Tf,num_pts); % include these in optimization variables?
+dt = time_vec(2)-time_vec(1);
+pts_x = linspace(1.0,0.8,num_pts); %ones(1,num_pts);
+pts_y = linspace(-0.4,0.4,num_pts);
+
+% thetas = linspace(0,2*pi,num_pts+1);
+% thetas = thetas(1:num_pts);
+% center = [0.9, -0.4]; %[0.9;0.3];
+% radius = 0.2;
+% pts_x = center(1) + radius*cos(thetas);
+% pts_y = center(2) + radius*sin(thetas);
+
+pts_x = linspace(0.6,1.0,num_pts); % big sine wave
+pts_y = 0.2*sin(((1/0.4)*2*pi)*pts_x);
+
+% pts_x = linspace(0.7,0.9,num_pts); % tiny sine wave
+% pts_y = 0.1*sin(((1/0.2)*2*pi)*pts_x);
+
+% desired end-effector trajectory
+pts = [pts_x;pts_y];
+
+vels = diff(pts,1,2)/dt; % populate velocity vectors?
+vels = [zeros(2,1), vels]; % pad with zeros for first point in trajectory
+
+%% Optimization Variables
+% TODO: confirm with Andrew that this is the right set of optimization
+% variables
+
+opti = casadi.Opti();
+% Optimization variables
+% q       (3xn) % TODO: don't hard code numberof DOFs
+% dq      (3xn)
+% u     (3xn)
+X = opti.variable(3*3, num_pts);
+opt_var.X   = X(:,:);
+opt_var.q   = X(1:3,:);
+opt_var.dq  = X(4:6,:);
+opt_var.u   = X(7:9,:);
+
+% TODO: create optimization parameters
+% (replace things like p and alpha_vec with opt_param)
+
+% Cost weights:       meff, meff_dir, e3_dir, u_mag, ee_pos, eef_pos, dq_mag, vee_mag, vee_dir
+alpha_vec =         [  0.0,     0.0,    0.0,   0.5, 1000.0,     0.0,    0.0,     1.0,     1.0];
+% [10 (or 0), 0 (or 10), 0, 0.5, 1000, 0, 0, 1, 1]
+
+%% Cost Function
+% TODO: turn this into a function of its own
+meff_cost_vec = casadi.MX(zeros(num_pts,1));
+meff_dir_cost_vec = casadi.MX(zeros(num_pts,1));
+e3_cost_vec = casadi.MX(zeros(num_pts,1));
+u_cost_vec = casadi.MX(zeros(num_pts,1));
+ee_cost_vec = casadi.MX(zeros(num_pts,1));
+eef_cost_vec = casadi.MX(zeros(num_pts,1));
+dq_cost_vec = casadi.MX(zeros(num_pts,1));
+v_cost_vec = casadi.MX(zeros(num_pts,1));
+vmag_cost_vec = casadi.MX(zeros(num_pts,1));
+
+% running cost on meff along vdir
+% also have running cost on alignment with traj velocity
+% starting with zero velocity, so cost starts with second point in
+% trajectory
+for ii=2:num_pts
+    z_i = [opt_var.q(:,ii); opt_var.dq(:,ii)];
+    ve_temp = jacobian_tip(z_i,p)*opt_var.dq(:,ii);
+    ve_i = ve_temp(1:2); % get actual tip velocity
+    ve_des = vels(:,ii);
+    ev_i = ve_i/norm(ve_i);
+    ev_des = ve_des/norm(ve_des);
+    %         ev_i = ve_des/norm(ve_des);
+    
+    LLv_inv = LLv_arm_op_inv(z_i,p);
+    %         meff_cost_vec(ii) = -(ev_des'*LLv_inv*ev_des); % negative seems nicer to work with than inverse
+    meff_cost_vec(ii) = -(ev_i'*LLv_inv*ev_i); % negative seems nicer to work with than inverse
+    %         meff_cost_vec(ii) = -((ev_i'*LLv_inv*ev_i)^2); % can square to get better gradients?
+    
+    % TODO: can we evaluate eigenvalues/vectors with CasADi
+    %     [V,D] = eig(LLv_inv);
+    %     if D(1,1) > D(2,2)
+    %         meff_max_dir = V(:,2);
+    %         meff_min_dir = V(:,1);
+    %     else
+    %         meff_max_dir = V(:,1);
+    %         meff_min_dir = V(:,2);
+    %     end
+    %     meff_dir_cost_vec(ii) = (meff_max_dir'*ev_i)^2; % minimize dot product of maximum effective mass direction and vdir
+    %     Qmeff = eye(2);
+    %     %meff_dir_cost_vec(ii) = (meff_min_dir-ev_i)'*Qmeff*(meff_min_dir-ev_i);
+    
+    v_cost_vec(ii) = -ev_i'*ev_des; % maximize alignment of the two vectors
+    Qvdes = eye(2);
+    %v_cost_vec(ii) = (ve_i-ve_des)'*Qvdes*(ve_i-ve_des);
+    
+    vmag_cost_vec(ii) = ve_i'*ve_i; % cost on overall magnitude of velocity
+    
+    th_link_3 = opt_var.q(1,ii)+opt_var.q(2,ii)+opt_var.q(3,ii); % angle between third link and world x-axis
+    e_link_3 = [cos(th_link_3); sin(th_link_3)];
+    % minimize dot product of e_link_3 and vdir
+    e3_cost_vec(ii) = (e_link_3'*ev_des)^2;
+    %         e3_cost_vec(ii) = (e_link_3'*ev_i)^2;
+    
+    % running cost on dq between positions?
+    R1 = eye(3);
+    for ii=2:num_pts
+        dq_i = opt_var.dq(:,ii);
+        dq_cost_vec(ii) = dq_i'*R1*dq_i;
+    end
+    
+    % cost on inputs
+    R2 = eye(3);
+    for ii=1:num_pts
+        u_i = opt_var.u(:,ii);
+        u_cost_vec(ii) = u_i'*R2*u_i;
+    end
+    
+    % cost on deviation from nominal trajectory
+    Q1 = 1.0*eye(2); % seems really heavy?
+    Q2 = 1.0*eye(2);
+    zf = [opt_var.q(:,end); opt_var.dq(:,end)];
+    eef = position_tip(zf,p);
+    eef = eef(1:2);
+    for ii=1:num_pts
+        z_i = [opt_var.q(:,ii); opt_var.dq(:,ii)];
+        ee_temp = position_tip(z_i,p);
+        ee_diff = ee_temp(1:2) - pts(:,ii);
+        eef_diff = eef - pts(:,ii);
+        ee_cost_vec(ii) = ee_diff'*Q1*ee_diff;
+        eef_cost_vec(ii) = eef_diff'*Q2*eef_diff;
+    end
+    
+    % add costs together with weights
+    
+    % cost on effective mass
+    a1 = alpha_vec(1)*ones(1,num_pts);
+    c1 = a1*meff_cost_vec;
+    
+    % cost on direction of minimum effective mass at end-effector
+    %a2 = alpha_vec(2)*ones(1,num_pts);
+    %c2 = a2*meff_dir_cost_vec;
+    
+    % cost on orientation of last arm link (relative to trajectory velocity)
+    a3 = alpha_vec(3)*ones(1,num_pts);
+    c3 = a3*e3_cost_vec;
+    
+    % cost on inputs
+    a4 = alpha_vec(4)*ones(1,num_pts);
+    c4 = a4*u_cost_vec;
+    
+    % cost on end-effector position (relative to trajectory)
+    a5 = alpha_vec(5)*ones(1,num_pts);
+    c5 = a5*ee_cost_vec;
+    
+    % cost on distance to end of trajectory
+    a6 = alpha_vec(6)*ones(1,num_pts);
+    c6 = a6*eef_cost_vec;
+    
+    % cost on magnitude of joint velocities
+    a7 = alpha_vec(7)*ones(1,num_pts);
+    c7 = a7*dq_cost_vec;
+    
+    % cost on magnitude of end-effector velocity
+    a8 = alpha_vec(8)*ones(1,num_pts);
+    c8 = a8*vmag_cost_vec;
+    
+    % cost on direction of end-effector velocity (relative to trajectory)
+    a9 = alpha_vec(9)*ones(1,num_pts);
+    c9 = a9*v_cost_vec;
+    
+    % other costs to add...
+    % final time? (if times are included as optimization variables?)
+    
+    % return total cost
+    %     total_cost = c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9;
+    total_cost = c1 + c3 + c4 + c5 + c6 + c7 + c8 + c9;
+    
+end
+
+
+%% Nonlinear Constraints
+% dynamics constraints... using helper functions -> A*ddq = b -> x[i+1] = x[i] + dt*dx/dt[i]
+for ii=2:num_pts
+    
+    z_i1 = [opt_var.q(:,ii-1); opt_var.dq(:,ii-1)];
+    u_i1 = opt_var.u(:,ii-1);
+    A = A_arm(z_i1,p);
+    b = b_arm(z_i1,u_i1,p);
+    %ddq_i1 = A\b;
+    ddq_i1 = inv(A,'symbolicqr')*b;
+    
+    % TODO: might just be easier to give a function that outputs the
+    % inverse of the A matrix
+    % TODO: might also just be easier to use the spatial v2 package
+    
+    %q(:,ii) = q(:,ii-1) + dt*dq(:,ii-1);
+    %dq(:,ii) = dq(:,ii-1) + dt*ddq_i
+    
+    opti.subject_to(opt_var.q(:,ii)-opt_var.q(:,ii-1)-dt*opt_var.dq(:,ii-1) == zeros(3,1))
+    opti.subject_to(opt_var.dq(:,ii)-opt_var.dq(:,ii-1)-dt*ddq_i1 == zeros(3,1))
+    
+end
+
+% end effector position constraint? at least for initial point, makes sense for all points until a better exploration objective is defined
+% end effector velocity constraint? not sure if this should be a constraint or a cost
+
+ee_0 = pts(:,1);
+z_0 = [opt_var.q(:,1); opt_var.dq(:,1)];
+ee_temp0 = position_tip(z_0,p);
+%ceq_q_0 = [ee_temp0(1:2)-ee_0; opt_var.dq(:,1)];
+opti.subject_to(ee_temp0(1:2)-ee_0 == zeros(2,1))
+opti.subject_to(opt_var.dq(:,1) == zeros(3,1))
+
+ee_f = pts(:,end);
+z_f = [opt_var.q(:,end); opt_var.dq(:,end)];
+ee_tempf = position_tip(z_f,p);
+%ceq_q_f = [ee_tempf(1:2)-ee_f]; %; dq(:,end)];
+opti.subject_to(ee_tempf(1:2)-ee_f == zeros(2,1))
+
+%     for ii=1:num_pts
+%         % get end effector position at time_vec(ii)
+%         ee_i = pts(:,ii);
+%         z_i = [q(:,ii); dq(:,ii)];
+%         ee_temp = position_tip(z_i,p);
+%         ceq_q_i = ee_temp(1:2)-ee_i;
+%
+%         % get end effector velocity (in x,y) at time_vec(ii)
+%         ve_des = [vels_x(ii);vels_y(ii)];
+%         ve_temp = jacobian_tip(z_i,p)*dq(:,ii);
+%         ve_i = ve_temp(1:2);
+%         ve_i = ve_i/norm(ve_i);
+%         ve_des = ve_des/norm(ve_des);
+%         ceq_dq_i = ve_i-ve_des; % direction of end effector velocity must match
+%
+%         ceq = [ceq; ceq_q_i];% ceq_dq_i];
+%     end
+
+
+%% Joint and Torque Limits
+ub = [];
+lb = [];
+
+% define limits?
+q_ub = [pi;pi;pi];
+q_lb = [-pi;-pi;-pi];
+
+dq_ub = [30;30;30];
+dq_lb = [-30;-30;-30];
+
+u_ub = [20;20;20];
+u_lb = [-20;-20;-20];
+
+for ii=1:num_pts
+    
+    q_i = opt_var.q(:,ii);
+    dq_i = opt_var.dq(:,ii);
+    u_i = opt_var.u(:,ii);
+    
+    opti.subject_to(q_i <= q_ub);
+    opti.subject_to(dq_i <= dq_ub);
+    opti.subject_to(u_i <= u_ub);
+    
+    opti.subject_to(q_i >= q_lb);
+    opti.subject_to(dq_i >= dq_lb);
+    opti.subject_to(u_i >= u_lb);
+    
+end
+
+%% Generate Initial Guess
+% initial values
+z0 = zeros(9,num_pts);
+for ii=1:num_pts
+    pt_i = pts(:,ii);
+    vel_i = vels(:,ii);
+    z0(1:3,ii) = inverse_kinematics_init(p,pt_i); % get feasible ik solution for each point in trajectory
+    %     z0(1:3,ii) = inverse_kinematics_perp(p,pt_i,vel_i);
+    
+    % given solution, get approximate joint velocities using jacobian pseudoinverse
+    J_i = jacobian_tip(z0(1:3,ii),p);
+    z0(4:6,ii) = pinv(J_i)*[vel_i;0];
+end
+%z0 = z0(:);
+opti.set_initial(X,z0);
+
+%% Setup Casadi and Ipopt Options
+p_opts = struct('expand',true); % this speeds up ~x10
+s_opts = struct('max_iter',3000,...
+    'max_cpu_time',40.0,...
+    'tol', 1e-4,... % (1e-6), 1e-4 works well
+    'acceptable_tol', 1e-4,... % (1e-4)
+    'constr_viol_tol', 1e-3,... % (1e-6), 1e3 works well
+    'acceptable_iter', 5,... % (15), % 5 works well
+    'nlp_scaling_method','gradient-based',... {'gradient-based','none','equilibration-based'};
+    'nlp_scaling_max_gradient',50,... % (100), % 50 works well
+    'bound_relax_factor', 1e-6,... % (1e-8), % 1e-6 works well
+    'fixed_variable_treatment','relax_bounds',... % {'make_parameter','make_constraint','relax_bounds'}; % relax bounds works well
+    'bound_frac',5e-1,... % (1e-2), 5e-1 works well
+    'bound_push',5e-1,... % (1e-2), 5e-1 works well
+    'mu_strategy','adaptive',... % {'monotone','adaptive'}; % adaptive works very well
+    'mu_oracle','probing',... % {'quality-function','probing','loqo'}; % probing works very well
+    'fixed_mu_oracle','probing',... % {'average_compl','quality-function','probing','loqo'}; % probing decent
+    'adaptive_mu_globalization','obj-constr-filter',... % {'obj-constr-filter','kkt-error','never-monotone-mode'};
+    'mu_init',1e-1,... % [1e-1 1e-2 1]
+    'alpha_for_y','bound-mult',... % {'primal','bound-mult','min','max','full','min-dual-infeas','safer-min-dual-infeas','primal-and-full'}; % primal or bound-mult seems best
+    'alpha_for_y_tol',1e1,... % (1e1)
+    'recalc_y','no',... % {'no','yes'};
+    'max_soc',4,... % (4)
+    'accept_every_trial_step','no',... % {'no','yes'}
+    'linear_solver','mumps',... % {'ma27','mumps','ma57','ma77','ma86'} % ma57 seems to work well
+    'linear_system_scaling','slack-based',... {'mc19','none','slack-based'}; % Slack-based
+    'linear_scaling_on_demand','yes',... % {'yes','no'};
+    'max_refinement_steps',10,... % (10)
+    'min_refinement_steps',1,... % (1)
+    'warm_start_init_point', 'no'); % (no)
+
+s_opts.file_print_level = 0;
+s_opts.print_level = 3;
+s_opts.print_frequency_iter = 5;
+s_opts.print_timing_statistics ='no';
+opti.solver('ipopt',p_opts,s_opts);
+
+%% Solve with Opti Stack
+disp('***********************');
+disp('Solving with Opti Stack');
+disp('***********************');
+sol = opti.solve();
+% try
+%     %sol = opti.solve_limited();
+%     sol = opti.solve();
+% catch
+%     disp('Did not solve - try debug solution') 
+% end
+% TODO: setup this logic for catching error to handle infeasible solution
+
+%% Decompose Solution
+X_star = sol.value(X);
+q_star(1:3,:) = sol.value(opt_var.q);
+dq_star(1:3,:) = sol.value(opt_var.dq);
+u_star(1:3,:) = sol.value(opt_var.u);
+
+
+function q_ik = inverse_kinematics_init(p,ee_i)
+    % pull out necessary parameters
+    l1 = p(14);
+    l2 = p(15);
+    l3 = p(16);
+
+    % pull out desired end-effector position
+    % note: will have to do interpolation eventually here
+    x_ee = ee_i(1);
+    y_ee = ee_i(2);
+
+    % set q1 initially
+    % calculate q2 and q3
+    q1_ik = 0.0; 
+    x_A = l1*cos(q1_ik);
+    y_A = l1*sin(q1_ik);
+
+    % alternatively, could set th3 = q1+q2+q3 so that the third link is
+    % perpendicular to the desired velocity (to start)
+    % could also warm start with a first solve to find the configuration
+    % with the third link close to parallel to the desired velocity
+
+    x_ee = x_ee-x_A; % distances taken from second joint
+    y_ee = y_ee-y_A;
+
+    q3_ik = acos( (x_ee.^2 + y_ee.^2 - l2^2 - l3^2) / (2 * l2 * l3) ); % this can be +/-, leave as just + for now
+    q2_ik = atan2(y_ee,x_ee) - atan2( (l3*sin(q3_ik)), (l2+(l3*cos(q3_ik))) );
+
+    % outputs
+    q_ik = [q1_ik;q2_ik;q3_ik];
+    
+end
+
+
+
+
+
+
+

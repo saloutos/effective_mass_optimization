@@ -4,6 +4,11 @@
 % trajectory optimization for effective mass, using direct transcription formulation
 % also using fmincon solver (better candidates?)
 
+%% Add Dependencies
+addpath(genpath('arm_4_functions'))
+addpath(genpath('arm_functions'))
+addpath(genpath('block_functions'))
+
 %% define arm parameters
 m1 = 1;                 m2 = 1;
 m3 = 0.5;               m_motor = 0.5;
