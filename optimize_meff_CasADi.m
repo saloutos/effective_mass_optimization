@@ -102,8 +102,8 @@ pts_y = linspace(-0.4,0.4,num_pts);
 % pts_x = center(1) + radius*cos(thetas);
 % pts_y = center(2) + radius*sin(thetas);
 
-pts_x = linspace(0.6,1.0,num_pts); % big sine wave
-pts_y = 0.2*sin(((1/0.4)*2*pi)*pts_x);
+% pts_x = linspace(0.6,1.0,num_pts); % big sine wave
+% pts_y = 0.2*sin(((1/0.4)*2*pi)*pts_x);
 
 % pts_x = linspace(0.7,0.9,num_pts); % tiny sine wave
 % pts_y = 0.1*sin(((1/0.2)*2*pi)*pts_x);
@@ -133,7 +133,7 @@ opt_var.u   = X(7:9,:);
 % (replace things like p and alpha_vec with opt_param)
 
 % Cost weights:        meff,      p,     v,   u,  dq
-alpha_vec =         [   0.0, 1000.0, 100.0, 0.5, 1.0];
+alpha_vec =         [   0.0, 1000000.0, 10000.0, 0.1, 0.0];
 
 %% Cost Function
 % TODO: turn this into a function of its own
@@ -205,6 +205,9 @@ c5 = alpha_vec(5)*sum(dq_cost_vec);
 
 % return total cost
 total_cost = c1 + c2 + c3 + c4 + c5;
+
+% set cost function
+opti.minimize( total_cost );
 
 %% Nonlinear Constraints
 % dynamics constraints... using helper functions -> A*ddq = b -> x[i+1] = x[i] + dt*dx/dt[i]
@@ -381,7 +384,7 @@ end
 
 %% Initial Plots
 % same plots as before for optimization results
-% TODO: eventually add forward simulation with block back in
+% TODO: eventually add forward simulation with block back in?
 
 figure(2); clf;
 subplot(3,1,1); hold on;
