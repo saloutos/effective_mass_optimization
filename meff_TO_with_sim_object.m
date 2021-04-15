@@ -60,16 +60,15 @@ vels = [zeros(2,1), vels]; % pad with zeros for first point in trajectory
 % this doesn't need to care about object right now?
 
 % Cost weights:       meff, meff_dir, e3_dir, u_mag, ee_pos, eef_pos, dq_mag, vee_mag, vee_dir
-alpha_vec =         [  0.0,     0.0,    0.0,   0.5, 1000.0,     0.0,    0.0,     1.0,     1.0]; 
+% alpha_vec =         [  0.0,     0.0,    0.0,   0.5, 1000.0,     0.0,    0.0,     1.0,     1.0]; 
                     % [10 (or 0), 0 (or 10), 0, 0.5, 1000, 0, 0, 1, 1]
 
+% Cost weights (2)    meff, p, v, u, dq
+alpha_vec =         [  10.0, 1000.0, 100.0, 0.5, 1.0];
+% alpha_vec =         [  10.0, 1000.0, 100.0, 0.5, 1.0]; % good weights, for sinusoid at least
                     
-% TODO: new costs...meff, (meff_dir-vdir)'*Q*(meff_dir-vdir), (v-vdes)'*Q*(v-vdes) 
-% combines dot-product notations, can append vdes cost (which works on magnitude and direction) to the cost on ee_pos
-% if time, make these defaults?
-
 % actual optimization
-[TO_data, opt_time] = meff_optimization(pts, Tf, p, alpha_vec);
+[TO_data, opt_time] = meff_optimization2(pts, Tf, p, alpha_vec);
 
 % display opt time
 opt_time_avg = opt_time/num_pts;
@@ -83,7 +82,8 @@ dq_data_TO = z_data_TO(4:6,:); % using z_data
 u_data_TO = z_data_TO(7:9,:); % using z_data
 meff_data_TO = TO_data(11:15,:);
 peff_data_TO = TO_data(16:18,:);
-ee_data_TO = TO_data(19:21,:);
+p_data_TO = TO_data(19:21,:);
+v_data_TO = TO_data(22:24,:);
 
 %% plot optimization results
 
@@ -99,15 +99,20 @@ plot(time_vec, u_data_TO);
 xlabel('Time'); ylabel('Joint Torque'); legend('u1','u2','u3');
 
 figure(3); clf; 
-subplot(3,1,1); hold on;
+subplot(2,1,1); hold on;
 plot(time_vec,meff_data_TO(1:3,:));
 xlabel('Time'); ylabel('Effective Mass'); legend('Actual','Min','Max');
-subplot(3,1,2); hold on;
+subplot(2,1,2); hold on;
 plot(time_vec, peff_data_TO(3,:));
 xlabel('Time'); ylabel('Effective Momentum');
-subplot(3,1,3); hold on;
-plot(time_vec, ee_data_TO(3,:));
+
+figure(4); clf;
+subplot(2,1,1); hold on;
+plot(time_vec, p_data_TO(3,:));
 xlabel('Time'); ylabel('Endpoint Position Error');
+subplot(2,1,2); hold on;
+plot(time_vec, v_data_TO(3,:));
+xlabel('Time'); ylabel('Endpoint Velocity Error');
 
 % animation of kinematics from optimization and dynamic simulation
 % filename = 'TO_mod_cost_sine_curve_meff_direct.gif'; % save animation as a gif
@@ -116,7 +121,7 @@ for ii=1:(num_pts-1)
 % for ii=(num_pts-1) % just generate the plot
     t_i = time_vec(ii);
     z_i = [q_data_TO(:,ii); dq_data_TO(:,ii)];
-    plot_arm_kinematics(t_i,z_i,p,meff_data_TO(:,ii),ee_data_TO,pts,vels(:,ii));
+    plot_arm_kinematics(t_i,z_i,p,meff_data_TO(:,ii),p_data_TO,pts,vels(:,ii));
 %     if ii==1
 %         gif(filename,'DelayTime',dt);
 %     else
@@ -126,111 +131,113 @@ for ii=1:(num_pts-1)
 end
 
 %% simulate arm with TO solution as reference
-sim_dt = 0.001;
-sim_data = simulate_arm_and_object(sim_dt,time_vec,z_data_TO,p,p_obj);
-% sim data is [t(i); qff(i); dqff(i); q(i); dq(i); ddq(i); uff(i); u(i); ee_pos(i); qo(i); dqo(i); ddqo(i), uo(i)]
 
-% extract simulation data
-time_vec_sim = sim_data(1,:);
-qff_data_sim = sim_data(2:4,:);
-dqff_data_sim = sim_data(5:7,:);
-q_data_sim = sim_data(8:10,:);
-dq_data_sim = sim_data(11:13,:);
-ddq_data_sim = sim_data(14:16,:);
-uff_data_sim = sim_data(17:19,:);
-u_data_sim = sim_data(20:22,:);
-meff_data_sim = sim_data(23:27,:);
-peff_data_sim = sim_data(28:30,:);
-ee_data_sim = sim_data(31:34,:);
-ve_data_sim = sim_data(35:36,:);
-qo_data_sim = sim_data(37:39,:);
-dqo_data_sim = sim_data(40:42,:);
-ddqo_data_sim = sim_data(43:45,:);
-uo_data_sim = sim_data(46:48,:);
+% sim_dt = 0.001;
+% sim_data = simulate_arm_and_object(sim_dt,time_vec,z_data_TO,p,p_obj);
+% % sim data is [t(i); qff(i); dqff(i); q(i); dq(i); ddq(i); uff(i); u(i); ee_pos(i); qo(i); dqo(i); ddqo(i), uo(i)]
+% 
+% % extract simulation data
+% time_vec_sim = sim_data(1,:);
+% qff_data_sim = sim_data(2:4,:);
+% dqff_data_sim = sim_data(5:7,:);
+% q_data_sim = sim_data(8:10,:);
+% dq_data_sim = sim_data(11:13,:);
+% ddq_data_sim = sim_data(14:16,:);
+% uff_data_sim = sim_data(17:19,:);
+% u_data_sim = sim_data(20:22,:);
+% meff_data_sim = sim_data(23:27,:);
+% peff_data_sim = sim_data(28:30,:);
+% ee_data_sim = sim_data(31:34,:);
+% ve_data_sim = sim_data(35:36,:);
+% qo_data_sim = sim_data(37:39,:);
+% dqo_data_sim = sim_data(40:42,:);
+% ddqo_data_sim = sim_data(43:45,:);
+% uo_data_sim = sim_data(46:48,:);
 
 
 %% plot simulation results
-figure(5); clf; 
-subplot(2,1,1); hold on;
-plot(time_vec, q_data_TO); % ff values
-plot(time_vec_sim, q_data_sim, '--');
-xlabel('Time'); ylabel('Joint Angle'); legend('q1,ff','q2,ff','q3,ff','q1','q2','q3');
-subplot(2,1,2); hold on;
-plot(time_vec, dq_data_TO); % ff values
-plot(time_vec_sim, dq_data_sim, '--'); % actual values
-xlabel('Time'); ylabel('Joint Velocity'); legend('dq1,ff','dq2,ff','dq3,ff','dq1','dq2','dq3');
 
-figure(6); clf;
-subplot(3,1,1); hold on;
-plot(time_vec, u_data_TO(1,:)); % ff
-plot(time_vec_sim, u_data_sim(1,:), '--'); % actual values
-xlabel('Time'); ylabel('Joint Torque'); legend('u1,ff','u1');
-subplot(3,1,2); hold on;
-plot(time_vec, u_data_TO(2,:)); % ff
-plot(time_vec_sim, u_data_sim(2,:), '--'); % actual values
-xlabel('Time'); ylabel('Joint Torque'); legend('u2,ff','u2');
-subplot(3,1,3); hold on;
-plot(time_vec, u_data_TO(3,:)); % ff
-plot(time_vec_sim, u_data_sim(3,:), '--'); % actual values
-xlabel('Time'); ylabel('Joint Torque'); legend('u3,ff','u3');
-
-figure(7); clf;
-subplot(3,1,1); hold on;
-plot(time_vec,meff_data_TO(1:3,:));
-plot(time_vec_sim,meff_data_sim(1,:));
-xlabel('Time'); ylabel('Effective Mass'); legend('TO','Min','Max','Sim');
-subplot(3,1,2); hold on;
-plot(time_vec, peff_data_TO(3,:));
-plot(time_vec_sim, peff_data_sim(3,:));
-xlabel('Time'); ylabel('Effective Momentum'); legend('TO','Sim');
-subplot(3,1,3); hold on;
-ee_error_vec_sim = ee_data_sim(1:2,:)-ee_data_sim(3:4,:);
-ee_error_mag_sim = sqrt( ee_error_vec_sim(1,:).^2 + ee_error_vec_sim(2,:).^2 );
-plot(time_vec_sim, ee_error_mag_sim);
-xlabel('Time'); ylabel('Endpoint Position Error from TO');
-
-figure(8); clf;
-subplot(2,2,1); hold on;
-plot(time_vec_sim,qo_data_sim(1,:));
-plot(time_vec_sim,qo_data_sim(2,:));
-xlabel('Time'); ylabel('Object Position'); legend('X','Y');
-subplot(2,2,2); hold on;
-plot(time_vec_sim,dqo_data_sim(1,:));
-plot(time_vec_sim,dqo_data_sim(2,:));
-xlabel('Time'); ylabel('Object Velocity'); legend('V_x','V_y');
-subplot(2,2,3); hold on;
-plot(time_vec_sim,sqrt(sum((qo_data_sim(1:2,:)-[xc;yc]).^2,1)));
-xlabel('Time'); ylabel('Object Displacement'); 
-subplot(2,2,4); hold on;
-plot(time_vec_sim,sqrt(sum(dqo_data_sim(1:2,:).^2,1)));
-plot(time_vec_sim,sqrt(sum(ve_data_sim.^2,1)));
-xlabel('Time'); ylabel('Speed'); legend('Object','Tip');
-
-figure(9); clf; 
-subplot(2,1,1); hold on;
-plot(time_vec_sim,sqrt(sum(uo_data_sim(1:2,:).^2,1)));
-xlabel('Time'); ylabel('Contact Force Magnitude');
-subplot(2,1,2); hold on;
-plot(time_vec_sim,uo_data_sim(1,:));
-plot(time_vec_sim,uo_data_sim(2,:));
-xlabel('Time'); ylabel('Contact Force on Object'); legend('F_x','F_y');
-
-figure(4);
-skip = 20;
-% filename = 'Sine_curve_with_meff_sim_object.gif'; % save animation as a gif
-for ii=1:skip:size(sim_data,2)
-% for ii=size(sim_data,2) % just generate the plot
-    t_i = sim_data(1,ii);
-    z_i = sim_data(8:13,ii);
-    zo_i = qo_data_sim(:,ii);
-    plot_arm_object_simulation(t_i,z_i,zo_i,p,p_obj,pts,ee_data_sim,qo_data_sim);
-%     if ii==1
-%         gif(filename,'DelayTime',dt);
-%     else
-%         gif;
-%     end
-    pause(skip*sim_dt);    
-end
+% figure(5); clf; 
+% subplot(2,1,1); hold on;
+% plot(time_vec, q_data_TO); % ff values
+% plot(time_vec_sim, q_data_sim, '--');
+% xlabel('Time'); ylabel('Joint Angle'); legend('q1,ff','q2,ff','q3,ff','q1','q2','q3');
+% subplot(2,1,2); hold on;
+% plot(time_vec, dq_data_TO); % ff values
+% plot(time_vec_sim, dq_data_sim, '--'); % actual values
+% xlabel('Time'); ylabel('Joint Velocity'); legend('dq1,ff','dq2,ff','dq3,ff','dq1','dq2','dq3');
+% 
+% figure(6); clf;
+% subplot(3,1,1); hold on;
+% plot(time_vec, u_data_TO(1,:)); % ff
+% plot(time_vec_sim, u_data_sim(1,:), '--'); % actual values
+% xlabel('Time'); ylabel('Joint Torque'); legend('u1,ff','u1');
+% subplot(3,1,2); hold on;
+% plot(time_vec, u_data_TO(2,:)); % ff
+% plot(time_vec_sim, u_data_sim(2,:), '--'); % actual values
+% xlabel('Time'); ylabel('Joint Torque'); legend('u2,ff','u2');
+% subplot(3,1,3); hold on;
+% plot(time_vec, u_data_TO(3,:)); % ff
+% plot(time_vec_sim, u_data_sim(3,:), '--'); % actual values
+% xlabel('Time'); ylabel('Joint Torque'); legend('u3,ff','u3');
+% 
+% figure(7); clf;
+% subplot(3,1,1); hold on;
+% plot(time_vec,meff_data_TO(1:3,:));
+% plot(time_vec_sim,meff_data_sim(1,:));
+% xlabel('Time'); ylabel('Effective Mass'); legend('TO','Min','Max','Sim');
+% subplot(3,1,2); hold on;
+% plot(time_vec, peff_data_TO(3,:));
+% plot(time_vec_sim, peff_data_sim(3,:));
+% xlabel('Time'); ylabel('Effective Momentum'); legend('TO','Sim');
+% subplot(3,1,3); hold on;
+% ee_error_vec_sim = ee_data_sim(1:2,:)-ee_data_sim(3:4,:);
+% ee_error_mag_sim = sqrt( ee_error_vec_sim(1,:).^2 + ee_error_vec_sim(2,:).^2 );
+% plot(time_vec_sim, ee_error_mag_sim);
+% xlabel('Time'); ylabel('Endpoint Position Error from TO');
+% 
+% figure(8); clf;
+% subplot(2,2,1); hold on;
+% plot(time_vec_sim,qo_data_sim(1,:));
+% plot(time_vec_sim,qo_data_sim(2,:));
+% xlabel('Time'); ylabel('Object Position'); legend('X','Y');
+% subplot(2,2,2); hold on;
+% plot(time_vec_sim,dqo_data_sim(1,:));
+% plot(time_vec_sim,dqo_data_sim(2,:));
+% xlabel('Time'); ylabel('Object Velocity'); legend('V_x','V_y');
+% subplot(2,2,3); hold on;
+% plot(time_vec_sim,sqrt(sum((qo_data_sim(1:2,:)-[xc;yc]).^2,1)));
+% xlabel('Time'); ylabel('Object Displacement'); 
+% subplot(2,2,4); hold on;
+% plot(time_vec_sim,sqrt(sum(dqo_data_sim(1:2,:).^2,1)));
+% plot(time_vec_sim,sqrt(sum(ve_data_sim.^2,1)));
+% xlabel('Time'); ylabel('Speed'); legend('Object','Tip');
+% 
+% figure(9); clf; 
+% subplot(2,1,1); hold on;
+% plot(time_vec_sim,sqrt(sum(uo_data_sim(1:2,:).^2,1)));
+% xlabel('Time'); ylabel('Contact Force Magnitude');
+% subplot(2,1,2); hold on;
+% plot(time_vec_sim,uo_data_sim(1,:));
+% plot(time_vec_sim,uo_data_sim(2,:));
+% xlabel('Time'); ylabel('Contact Force on Object'); legend('F_x','F_y');
+% 
+% figure(10);
+% skip = 20;
+% % filename = 'Sine_curve_with_meff_sim_object.gif'; % save animation as a gif
+% for ii=1:skip:size(sim_data,2)
+% % for ii=size(sim_data,2) % just generate the plot
+%     t_i = sim_data(1,ii);
+%     z_i = sim_data(8:13,ii);
+%     zo_i = qo_data_sim(:,ii);
+%     plot_arm_object_simulation(t_i,z_i,zo_i,p,p_obj,pts,ee_data_sim,qo_data_sim);
+% %     if ii==1
+% %         gif(filename,'DelayTime',dt);
+% %     else
+% %         gif;
+% %     end
+%     pause(skip*sim_dt);    
+% end
 
 %% helper functions 
 function plot_arm_kinematics(t_i,z_i,p,meff_sol_i,ee_sol,pts,vels_i)
@@ -315,7 +322,7 @@ function plot_arm_simulation(t_i,z_i,p,pts,ee_data)
     ev_i = ve_i/norm(ve_i);
 
     %%% plot these values 
-    figure(4);
+    figure(10);
     clf; hold on;
     
     cur_time = sprintf('t = %.3f', t_i);
@@ -356,7 +363,7 @@ function plot_arm_object_simulation(t_i,z_i,zo_i,p,p_obj,pts,ee_data,qo_data)
     ev_i = ve_i/norm(ve_i);
 
     %%% plot these values 
-    figure(4);
+    figure(10);
     clf; hold on;
     
     cur_time = sprintf('t = %.3f', t_i);

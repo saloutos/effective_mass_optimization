@@ -117,6 +117,7 @@ b = A*ddq - eom;
 % Equations of motion are
 % eom = A *ddq + (coriolis term) + (gravitational term) - Q = 0
 Mass_Joint_Sp = A;
+Mass_Joint_Sp_inv = inv(A);
 Grav_Joint_Sp = simplify(jacobian(Vg, q)');
 Corr_Joint_Sp = simplify( eom + Q - Grav_Joint_Sp - A*ddq);
 
@@ -162,6 +163,7 @@ z  = [q ; dq]; % state variables
 
 % % directory = '../AutoDerived/'; % Write functions to a separate folder because we don't usually have to see them
 % matlabFunction(A,'file',['A_' name],'vars',{z p});
+% matlabFunction(Mass_Joint_Sp_inv,'file',['A_inv_' name],'vars',{z p});
 % matlabFunction(b,'file',['b_' name],'vars',{z u p});
 % matlabFunction(E,'file',['energy_' name],'vars',{z p});
 % matlabFunction(qC,'file',['position_tip'],'vars',{z p});
