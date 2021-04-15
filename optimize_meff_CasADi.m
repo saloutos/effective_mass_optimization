@@ -7,7 +7,7 @@ addpath(genpath('spatial_v2'));
 addpath(genpath('arm_4_functions'))
 addpath(genpath('arm_functions'))
 addpath(genpath('block_functions'))
-import casadi.*
+import casadi.* 
 
 %% define arm parameters
 % TODO: Use spatial v2?
@@ -88,7 +88,7 @@ mu_o = 0.5;                           % friction coefficient with surface
 p_obj = [mo Io radius mu_o g xc yc]'; % appended starting location of block
 
 %% define trajectory
-num_pts = 31;
+num_pts = 51;
 Tf = 1;
 time_vec = linspace(0,Tf,num_pts); % include these in optimization variables?
 dt = time_vec(2)-time_vec(1);
@@ -102,8 +102,8 @@ pts_y = linspace(-0.4,0.4,num_pts);
 % pts_x = center(1) + radius*cos(thetas);
 % pts_y = center(2) + radius*sin(thetas);
 
-% pts_x = linspace(0.6,1.0,num_pts); % big sine wave
-% pts_y = 0.2*sin(((1/0.4)*2*pi)*pts_x);
+pts_x = linspace(0.6,1.0,num_pts); % big sine wave
+pts_y = 0.2*sin(((1/0.4)*2*pi)*pts_x);
 
 % pts_x = linspace(0.7,0.9,num_pts); % tiny sine wave
 % pts_y = 0.1*sin(((1/0.2)*2*pi)*pts_x);
@@ -115,8 +115,6 @@ vels = diff(pts,1,2)/dt; % populate velocity vectors?
 vels = [zeros(2,1), vels]; % pad with zeros for first point in trajectory
 
 %% Optimization Variables
-% TODO: confirm with Andrew that this is the right set of optimization
-% variables
 
 opti = casadi.Opti();
 % Optimization variables
@@ -133,7 +131,7 @@ opt_var.u   = X(7:9,:);
 % (replace things like p and alpha_vec with opt_param)
 
 % Cost weights:        meff,      p,     v,   u,  dq
-alpha_vec =         [   0.0, 1000000.0, 10000.0, 0.1, 0.0];
+alpha_vec =         [  10.0, 1000.0, 100.0, 0.5, 1.0];
 
 %% Cost Function
 % TODO: turn this into a function of its own
@@ -229,6 +227,8 @@ for ii=2:num_pts
     opti.subject_to(opt_var.dq(:,ii)-opt_var.dq(:,ii-1)-dt*ddq_i1 == zeros(3,1))
     
 end
+
+% TODO: look at adding a constraint on maximum effective momentum?
 
 ee_0 = pts(:,1);
 z_0 = [opt_var.q(:,1); opt_var.dq(:,1)];
