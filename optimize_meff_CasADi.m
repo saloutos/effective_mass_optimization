@@ -111,7 +111,7 @@ dt = time_vec(2)-time_vec(1);
 
 % import randomly generated linear trajectory
 traj_lib = load('random_linear_traj.mat');
-traj_ind = 17; %randi(size(traj_lib.trajectories,2));
+traj_ind = 6; %randi(size(traj_lib.trajectories,2));
 traj_sample = traj_lib.trajectories(:,traj_ind);
 
 pts_x = linspace(traj_sample(1),traj_sample(2),num_pts);
