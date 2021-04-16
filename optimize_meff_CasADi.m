@@ -92,8 +92,9 @@ num_pts = 51;
 Tf = 1;
 time_vec = linspace(0,Tf,num_pts); % include these in optimization variables?
 dt = time_vec(2)-time_vec(1);
-pts_x = linspace(1.0,0.8,num_pts); %ones(1,num_pts);
-pts_y = linspace(-0.4,0.4,num_pts);
+
+% pts_x = linspace(1.0,0.8,num_pts); %ones(1,num_pts);
+% pts_y = linspace(-0.4,0.4,num_pts);
 
 % thetas = linspace(0,2*pi,num_pts+1);
 % thetas = thetas(1:num_pts);
@@ -101,12 +102,20 @@ pts_y = linspace(-0.4,0.4,num_pts);
 % radius = 0.2;
 % pts_x = center(1) + radius*cos(thetas);
 % pts_y = center(2) + radius*sin(thetas);
-
-pts_x = linspace(0.6,1.0,num_pts); % big sine wave
-pts_y = 0.2*sin(((1/0.4)*2*pi)*pts_x);
+% 
+% pts_x = linspace(0.6,1.0,num_pts); % big sine wave
+% pts_y = 0.2*sin(((1/0.4)*2*pi)*pts_x);
 
 % pts_x = linspace(0.7,0.9,num_pts); % tiny sine wave
 % pts_y = 0.1*sin(((1/0.2)*2*pi)*pts_x);
+
+% import randomly generated linear trajectory
+traj_lib = load('random_linear_traj.mat');
+traj_ind = 17; %randi(size(traj_lib.trajectories,2));
+traj_sample = traj_lib.trajectories(:,traj_ind);
+
+pts_x = linspace(traj_sample(1),traj_sample(2),num_pts);
+pts_y = linspace(traj_sample(3),traj_sample(4),num_pts);
 
 % desired end-effector trajectory
 pts = [pts_x;pts_y];
@@ -342,7 +351,6 @@ X_star = sol.value(X);
 q_star(1:3,:) = sol.value(opt_var.q);
 dq_star(1:3,:) = sol.value(opt_var.dq);
 u_star(1:3,:) = sol.value(opt_var.u);
-showmotion(model, time_vec, q_star);
 
 % calculate effective mass, effective momentum
 meff_star = zeros(5,num_pts); % each column is [meff; meff_min; meff_max; lm_dir]
@@ -382,6 +390,11 @@ for ii=1:num_pts
     v_star(3,ii) = norm(v_error);
 end
 
+% TODO: save TO data in struct
+
+%% Animate Solution
+% showmotion(model, time_vec, q_star);
+
 %% Initial Plots
 % same plots as before for optimization results
 % TODO: eventually add forward simulation with block back in?
@@ -399,10 +412,11 @@ xlabel('Time'); ylabel('Joint Torque'); legend('u1','u2','u3');
 
 figure(3); clf; 
 subplot(2,1,1); hold on;
-plot(time_vec,meff_star(1:3,:));
+plot(time_vec,meff_star(1,:),'o-','LineWidth',1.25);
+plot(time_vec,meff_star(2:3,:),'LineWidth',1.25);
 xlabel('Time'); ylabel('Effective Mass'); legend('Actual','Min','Max');
 subplot(2,1,2); hold on;
-plot(time_vec, peff_star(3,:));
+plot(time_vec, peff_star(3,:),'LineWidth',1.25);
 xlabel('Time'); ylabel('Effective Momentum');
 
 figure(4); clf;
@@ -416,8 +430,8 @@ xlabel('Time'); ylabel('Endpoint Velocity Error');
 % animation of kinematics from optimization and dynamic simulation
 % filename = 'TO_mod_cost_sine_curve_meff_direct.gif'; % save animation as a gif
 figure(1);
-for ii=1:(num_pts-1)
-% for ii=(num_pts-1) % just generate the plot
+% for ii=1:num_pts
+for ii=1 % just generate the plot
     t_i = time_vec(ii);
     z_i = [q_star(:,ii); dq_star(:,ii)];
     plot_arm_kinematics(t_i,z_i,p,meff_star(:,ii),p_star,pts,vels(:,ii));
@@ -509,6 +523,13 @@ function plot_arm_kinematics(t_i,z_i,p,meff_sol_i,ee_sol,pts,vels_i)
     
     des_pts = plot(pts(1,:), pts(2,:),'g','LineWidth',2.0); % have this already plotted?
     act_pts = plot(ee_sol(1,:), ee_sol(2,:),'Color',[0.1, 0.55, 0.1]); 
+    
+    % plot arena as well
+    % TODO: don't have these dimensions hardcoded
+    % TODO: have text showing traj_ind? include in title?
+    x_a = [0.4, 1.2, 1.2, 0.4, 0.4];
+    y_a = [-0.4, -0.4, 0.4, 0.4, -0.4];
+    arena_pts = plot(x_a,y_a,'r--');
     
     ell_color = [0.85, 0.33, 0.];
     h_OA = plot([0 rA(1)],[0 rA(2)],'k','LineWidth',2);
