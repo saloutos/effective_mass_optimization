@@ -92,7 +92,7 @@ traj_lib = load('random_linear_traj.mat');
 
 %% giant for loop running optimization for each trajectory
 num_traj = size(traj_lib.trajectories,2);
-TO_data = struct('pts',[],'vels',[],'data',[]);
+TO_data = struct('pts',[],'vels',[],'time',[],'data',[]);
 TO_data = repmat(TO_data,1,num_traj);
 
 for ti=1:num_traj
@@ -117,6 +117,7 @@ for ti=1:num_traj
 
     TO_data(ti).pts = pts;
     TO_data(ti).vels = vels;
+    TO_data(ti).time = time_vec;
     
     %% Optimization Variables
 
@@ -135,7 +136,7 @@ for ti=1:num_traj
     % (replace things like p and alpha_vec with opt_param)
 
     % Cost weights:        meff,      p,     v,   u,  dq
-    alpha_vec =         [  10.0, 1000.0, 100.0, 0.5, 1.0];
+    alpha_vec =         [   0.0, 1000.0, 100.0, 0.5, 1.0];
 
     %% Cost Function
     % TODO: turn this into a function of its own
@@ -162,16 +163,9 @@ for ti=1:num_traj
         meff_cost_vec(ii) = -(ev_i'*LLv_inv*ev_i); % negative seems nicer to work with than inverse
         %         meff_cost_vec(ii) = -((ev_i'*LLv_inv*ev_i)^2); % can square to get better gradients?
 
-        % end-effector position cost
-        Qpdes = eye(2);
-        p_temp = position_tip(z_i,p);
-        p_diff = p_temp(1:2) - pts(:,ii);
-        p_cost_vec(ii) = p_diff'*Qpdes*p_diff;  
-
         % end-effector velocity cost
         Qvdes = eye(2);
         v_cost_vec(ii) = (ve_i-ve_des)'*Qvdes*(ve_i-ve_des);
-
     end
 
     % running cost on dq between positions?
@@ -181,11 +175,22 @@ for ti=1:num_traj
         dq_cost_vec(ii) = dq_i'*R1*dq_i;
     end
 
-    % cost on inputs
+    
     R2 = eye(3);
+    Qpdes = eye(2);
     for ii=1:num_pts
+        % cost on inputs
         u_i = opt_var.u(:,ii);
         u_cost_vec(ii) = u_i'*R2*u_i;
+        % end-effector position cost
+        z_i = [opt_var.q(:,ii); opt_var.dq(:,ii)];
+        p_temp = position_tip(z_i,p);
+        p_diff = p_temp(1:2) - pts(:,ii);
+        p_cost_vec(ii) = p_diff'*Qpdes*p_diff;  
+        % higher cost on initial and final positions
+        if (ii==1)||(ii==num_pts)
+            p_cost_vec(ii) = 100*p_cost_vec(ii);
+        end
     end
 
     % add costs together with weights
@@ -238,14 +243,14 @@ for ti=1:num_traj
     z_0 = [opt_var.q(:,1); opt_var.dq(:,1)];
     ee_temp0 = position_tip(z_0,p);
     %ceq_q_0 = [ee_temp0(1:2)-ee_0; opt_var.dq(:,1)];
-    opti.subject_to(ee_temp0(1:2)-ee_0 == zeros(2,1))
+%     opti.subject_to(ee_temp0(1:2)-ee_0 == zeros(2,1))
     opti.subject_to(opt_var.dq(:,1) == zeros(3,1))
 
     ee_f = pts(:,end);
     z_f = [opt_var.q(:,end); opt_var.dq(:,end)];
     ee_tempf = position_tip(z_f,p);
     %ceq_q_f = [ee_tempf(1:2)-ee_f]; %; dq(:,end)];
-    opti.subject_to(ee_tempf(1:2)-ee_f == zeros(2,1))
+%     opti.subject_to(ee_tempf(1:2)-ee_f == zeros(2,1))
 
     %% Joint and Torque Limits
 
@@ -340,6 +345,12 @@ for ti=1:num_traj
     catch
         fprintf('\nDid not solve for trajectory #%d - try debug solution.', ti);
         TO_data(ti).data = 'Bad';
+        
+        % TODO: if the optimization cannot solve, try turning off
+        % constraints on initial and final positions...seems to work well
+        % enough, and still gets valid results due to cost on end-effector
+        % positions
+        
         continue
     end
     % TODO: setup this logic for catching error to handle infeasible solution

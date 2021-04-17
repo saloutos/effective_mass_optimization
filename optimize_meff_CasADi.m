@@ -111,7 +111,7 @@ dt = time_vec(2)-time_vec(1);
 
 % import randomly generated linear trajectory
 traj_lib = load('random_linear_traj.mat');
-traj_ind = 6; %randi(size(traj_lib.trajectories,2));
+traj_ind = 13; %randi(size(traj_lib.trajectories,2));
 traj_sample = traj_lib.trajectories(:,traj_ind);
 
 pts_x = linspace(traj_sample(1),traj_sample(2),num_pts);
@@ -154,6 +154,9 @@ dq_cost_vec = casadi.MX(zeros(num_pts,1));
 % also have running cost on alignment with traj velocity
 % starting with zero velocity, so cost starts with second point in
 % trajectory
+
+% TODO: remove constraints on initial and final positions, add higher costs?
+
 for ii=2:num_pts
     z_i = [opt_var.q(:,ii); opt_var.dq(:,ii)];
     
@@ -167,18 +170,12 @@ for ii=2:num_pts
     meff_cost_vec(ii) = -(ev_i'*LLv_inv*ev_i); % negative seems nicer to work with than inverse
     %         meff_cost_vec(ii) = -((ev_i'*LLv_inv*ev_i)^2); % can square to get better gradients?
     
-    % end-effector position cost
-    Qpdes = eye(2);
-    p_temp = position_tip(z_i,p);
-    p_diff = p_temp(1:2) - pts(:,ii);
-    p_cost_vec(ii) = p_diff'*Qpdes*p_diff;  
-
     % end-effector velocity cost
     Qvdes = eye(2);
     v_cost_vec(ii) = (ve_i-ve_des)'*Qvdes*(ve_i-ve_des);
     
 end
-    
+
 % running cost on dq between positions?
 R1 = eye(3);
 for ii=2:num_pts
@@ -186,11 +183,22 @@ for ii=2:num_pts
     dq_cost_vec(ii) = dq_i'*R1*dq_i;
 end
 
-% cost on inputs
+
 R2 = eye(3);
+Qpdes = eye(2);
 for ii=1:num_pts
+    % cost on inputs
     u_i = opt_var.u(:,ii);
     u_cost_vec(ii) = u_i'*R2*u_i;
+    % end-effector position cost
+    z_i = [opt_var.q(:,ii); opt_var.dq(:,ii)];
+    p_temp = position_tip(z_i,p);
+    p_diff = p_temp(1:2) - pts(:,ii);
+    p_cost_vec(ii) = p_diff'*Qpdes*p_diff; 
+    % higher cost on initial and final positions
+    if (ii==1)||(ii==num_pts)
+        p_cost_vec(ii) = 100*p_cost_vec(ii);
+    end
 end
 
 % add costs together with weights
@@ -243,14 +251,14 @@ ee_0 = pts(:,1);
 z_0 = [opt_var.q(:,1); opt_var.dq(:,1)];
 ee_temp0 = position_tip(z_0,p);
 %ceq_q_0 = [ee_temp0(1:2)-ee_0; opt_var.dq(:,1)];
-opti.subject_to(ee_temp0(1:2)-ee_0 == zeros(2,1))
+% opti.subject_to(ee_temp0(1:2)-ee_0 == zeros(2,1))
 opti.subject_to(opt_var.dq(:,1) == zeros(3,1))
 
 ee_f = pts(:,end);
 z_f = [opt_var.q(:,end); opt_var.dq(:,end)];
 ee_tempf = position_tip(z_f,p);
 %ceq_q_f = [ee_tempf(1:2)-ee_f]; %; dq(:,end)];
-opti.subject_to(ee_tempf(1:2)-ee_f == zeros(2,1))
+% opti.subject_to(ee_tempf(1:2)-ee_f == zeros(2,1))
 
 %% Joint and Torque Limits
 
@@ -283,6 +291,7 @@ end
 %% Generate Initial Guess
 % initial values
 z0 = zeros(9,num_pts);
+
 for ii=1:num_pts
     pt_i = pts(:,ii);
     vel_i = vels(:,ii);
@@ -294,6 +303,7 @@ for ii=1:num_pts
     z0(4:6,ii) = pinv(J_i)*[vel_i;0];
 end
 %z0 = z0(:);
+
 opti.set_initial(X,z0);
 
 %% Setup Casadi and Ipopt Options
