@@ -58,6 +58,11 @@ for ii=1:N
     meff_l3 = X_l3.meff;
     meff_m_l3 = X_m_l3.meff;
     
+    verr = X.v(3,:);
+    verr_m = X_m.v(3,:);
+    verr_l3 = X_l3.v(3,:);
+    verr_m_l3 = X_m_l3.v(3,:);
+    
     q0 = X.q(:,1);
     qf = X.q(:,end);
     q0_m = X_m.q(:,1);
@@ -122,13 +127,27 @@ for ii=1:N
     legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
     ylim([0, 1.5]);
     
-    % TODO: plot velocity and position tracking error over time
-    figure(2); % TODO: eventually combine with other figure?
-    subplot(1,2,1); hold on;
-    plot(time
-    
-    
     plt_title = sprintf('Optimized trajectory and effective mass for reference trajectory #%d', ii);
+    sgtitle(plt_title);
+    
+    % also plot velocity and position tracking error over time
+    figure(2); clf; % TODO: eventually combine with other figure?
+    subplot(1,2,1); hold on;
+    plot(time_vec, act_pts(3,:),'LineWidth',1.25);
+    plot(time_vec, act_pts_m(3,:),'LineWidth',1.25);
+    plot(time_vec, act_pts_l3(3,:),'LineWidth',1.25);
+    plot(time_vec, act_pts_m_l3(3,:),'LineWidth',1.25);
+    xlabel('Time'); ylabel('Position Error');
+    legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+    subplot(1,2,2); hold on;
+    plot(time_vec, verr, 'LineWidth',1.25);
+    plot(time_vec, verr_m, 'LineWidth',1.25);
+    plot(time_vec, verr_l3, 'LineWidth',1.25);
+    plot(time_vec, verr_m_l3,'LineWidth',1.25);
+    xlabel('Time'); ylabel('Velocity Error');
+    legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+    
+    plt_title = sprintf('Tracking errors for reference trajectory #%d', ii);
     sgtitle(plt_title);
     
     % stop between each trajectory?
