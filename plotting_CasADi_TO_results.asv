@@ -10,18 +10,17 @@ addpath(genpath('block_functions'))
 % import trajectory data
 clear all
 
-load('multi_traj_data_unconstrained.mat');
-load('multi_traj_data_no_meff.mat');
-load('multi_traj_data_link3_no_meff.mat');
-load('random_linear_traj.mat');
+% load('multi_traj_data_unconstrained.mat');
+% load('multi_traj_data_no_meff.mat');
+% load('random_linear_traj.mat');
 
-% load('multi_traj_sine_data.mat');
-% load('multi_traj_sine_data_no_meff.mat');
-% load('multi_traj_sine_data_link3_no_meff.mat');
-% load('random_sinusoid_traj.mat');
-% TO_data = TO_data_sinusoid;
-% TO_data_no_meff = TO_data_sinusoid_nm;
-% TO_data_link3_no_meff = TO_data_l3_nm;
+load('multi_traj_sine_data.mat');
+load('multi_traj_sine_data_no_meff.mat');
+load('multi_traj_sine_data_link3_no_meff.mat');
+load('random_sinusoid_traj.mat');
+TO_data = TO_data_sinusoid;
+TO_data_no_meff = TO_data_sinusoid_nm;
+TO_data_link3_no_meff = TO_data_l3_nm;
 
 
 % define arm parameters
@@ -85,26 +84,10 @@ for ii=1:N
     rA0_l3_nm = kp0_l3_nm(:,1);
     rB0_l3_nm = kp0_l3_nm(:,2);
     rC0_l3_nm = kp0_l3_nm(:,3);
-    plot([0 rA0_l3_nm(1)],[0 rA0_l3_nm(2)],'Color',[0.2,0.2,0.2],'LineWidth',2);
-    plot([rA0_l3_nm(1) rB0_l3_nm(1)],[rA0_l3_nm(2) rB0_l3_nm(2)],'Color',[0.2,0.2,0.2],'LineWidth',2);
-    plot([rB0_l3_nm(1) rC0_l3_nm(1)],[rB0_l3_nm(2) rC0_l3_nm(2)],'Color',[0.2,0.2,0.2],'LineWidth',2);
-    plot([0 rA0_l3_nm(1) rB0_l3_nm(1)],[0 rA0_l3_nm(2) rB0_l3_nm(2)],'o','Color',[0.2,0.2,0.2],'MarkerSize',5,'MarkerFaceColor',[0.2,0.2,0.2]);
-    kpf_l3_nm = keypoints_arm(qf_l3_nm,p);
-    rAf_l3_nm = kpf_l3_nm(:,1);
-    rBf_l3_nm = kpf_l3_nm(:,2);
-    rCf_l3_nm = kpf_l3_nm(:,3);
-    plot([0 rAf_l3_nm(1)],[0 rAf_l3_nm(2)],'Color',[0.3,0.3,0.3],'LineWidth',2);
-    plot([rAf_l3_nm(1) rBf_l3_nm(1)],[rAf_l3_nm(2) rBf_l3_nm(2)],'Color',[0.3,0.3,0.3],'LineWidth',2);
-    plot([rBf_l3_nm(1) rCf_l3_nm(1)],[rBf_l3_nm(2) rCf_l3_nm(2)],'Color',[0.3,0.3,0.3],'LineWidth',2);
-    plot([0 rAf_l3_nm(1) rBf_l3_nm(1)],[0 rAf_l3_nm(2) rBf_l3_nm(2)],'o','Color',[0.3,0.3,0.3],'MarkerSize',5,'MarkerFaceColor',[0.3,0.3,0.3]);
-    kp0_nm = keypoints_arm(q0_nm,p);
-    rA0_nm = kp0_nm(:,1);
-    rB0_nm = kp0_nm(:,2);
-    rC0_nm = kp0_nm(:,3);
-    plot([0 rA0_nm(1)],[0 rA0_nm(2)],'Color',[0.25,0.25,0.25],'LineWidth',2);
-    plot([rA0_nm(1) rB0_nm(1)],[rA0_nm(2) rB0_nm(2)],'Color',[0.25,0.25,0.25],'LineWidth',2);
-    plot([rB0_nm(1) rC0_nm(1)],[rB0_nm(2) rC0_nm(2)],'Color',[0.25,0.25,0.25],'LineWidth',2);
-    plot([0 rA0_nm(1) rB0_nm(1)],[0 rA0_nm(2) rB0_nm(2)],'o','Color',[0.25,0.25,0.25],'MarkerSize',5,'MarkerFaceColor',[0.25,0.25,0.25]);
+    plot([0 rA0_l3_nm(1)],[0 rA0_l3_nm(2)],'Color',[0.25,0.25,0.25],'LineWidth',2);
+    plot([rA0_l3_nm(1) rB0_l3_nm(1)],[rA0_l3_nm(2) rB0_l3_nm(2)],'Color',[0.25,0.25,0.25],'LineWidth',2);
+    plot([rB0_l3_nm(1) rC0_l3_nm(1)],[rB0_l3_nm(2) rC0_l3_nm(2)],'Color',[0.25,0.25,0.25],'LineWidth',2);
+    plot([0 rA0_l3_nm(1) rB0_l3_nm(1)],[0 rA0_l3_nm(2) rB0_l3_nm(2)],'o','Color',[0.25,0.25,0.25],'MarkerSize',5,'MarkerFaceColor',[0.25,0.25,0.25]);
     kpf_nm = keypoints_arm(qf_nm,p);
     rAf_nm = kpf_nm(:,1);
     rBf_nm = kpf_nm(:,2);
@@ -113,22 +96,38 @@ for ii=1:N
     plot([rAf_nm(1) rBf_nm(1)],[rAf_nm(2) rBf_nm(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
     plot([rBf_nm(1) rCf_nm(1)],[rBf_nm(2) rCf_nm(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
     plot([0 rAf_nm(1) rBf_nm(1)],[0 rAf_nm(2) rBf_nm(2)],'o','Color',[0.4,0.4,0.4],'MarkerSize',5,'MarkerFaceColor',[0.4,0.4,0.4]);
-    kp0 = keypoints_arm(q0,p);
-    rA0 = kp0(:,1);
-    rB0 = kp0(:,2);
-    rC0 = kp0(:,3);
-    plot([0 rA0(1)],[0 rA0(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
-    plot([rA0(1) rB0(1)],[rA0(2) rB0(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
-    plot([rB0(1) rC0(1)],[rB0(2) rC0(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
-    plot([0 rA0(1) rB0(1)],[0 rA0(2) rB0(2)],'o','Color',[0.4,0.4,0.4],'MarkerSize',5,'MarkerFaceColor',[0.4,0.4,0.4]);
-    kpf = keypoints_arm(qf,p);
-    rAf = kpf(:,1);
-    rBf = kpf(:,2);
-    rCf = kpf(:,3);
-    plot([0 rAf(1)],[0 rAf(2)],'Color',[0.55,0.55,0.55],'LineWidth',2);
-    plot([rAf(1) rBf(1)],[rAf(2) rBf(2)],'Color',[0.55,0.55,0.55],'LineWidth',2);
-    plot([rBf(1) rCf(1)],[rBf(2) rCf(2)],'Color',[0.55,0.55,0.55],'LineWidth',2);
-    plot([0 rAf(1) rBf(1)],[0 rAf(2) rBf(2)],'o','Color',[0.55,0.55,0.55],'MarkerSize',5,'MarkerFaceColor',[0.55,0.55,0.55]);
+%     kp0_nm = keypoints_arm(q0_nm,p);
+%     rA0_nm = kp0_nm(:,1);
+%     rB0_nm = kp0_nm(:,2);
+%     rC0_nm = kp0_nm(:,3);
+%     plot([0 rA0_nm(1)],[0 rA0_nm(2)],'Color',[0.25,0.25,0.25],'LineWidth',2);
+%     plot([rA0_nm(1) rB0_nm(1)],[rA0_nm(2) rB0_nm(2)],'Color',[0.25,0.25,0.25],'LineWidth',2);
+%     plot([rB0_nm(1) rC0_nm(1)],[rB0_nm(2) rC0_nm(2)],'Color',[0.25,0.25,0.25],'LineWidth',2);
+%     plot([0 rA0_nm(1) rB0_nm(1)],[0 rA0_nm(2) rB0_nm(2)],'o','Color',[0.25,0.25,0.25],'MarkerSize',5,'MarkerFaceColor',[0.25,0.25,0.25]);
+%     kpf_nm = keypoints_arm(qf_nm,p);
+%     rAf_nm = kpf_nm(:,1);
+%     rBf_nm = kpf_nm(:,2);
+%     rCf_nm = kpf_nm(:,3);
+%     plot([0 rAf_nm(1)],[0 rAf_nm(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
+%     plot([rAf_nm(1) rBf_nm(1)],[rAf_nm(2) rBf_nm(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
+%     plot([rBf_nm(1) rCf_nm(1)],[rBf_nm(2) rCf_nm(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
+%     plot([0 rAf_nm(1) rBf_nm(1)],[0 rAf_nm(2) rBf_nm(2)],'o','Color',[0.4,0.4,0.4],'MarkerSize',5,'MarkerFaceColor',[0.4,0.4,0.4]);
+%     kp0 = keypoints_arm(q0,p);
+%     rA0 = kp0(:,1);
+%     rB0 = kp0(:,2);
+%     rC0 = kp0(:,3);
+%     plot([0 rA0(1)],[0 rA0(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
+%     plot([rA0(1) rB0(1)],[rA0(2) rB0(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
+%     plot([rB0(1) rC0(1)],[rB0(2) rC0(2)],'Color',[0.4,0.4,0.4],'LineWidth',2);
+%     plot([0 rA0(1) rB0(1)],[0 rA0(2) rB0(2)],'o','Color',[0.4,0.4,0.4],'MarkerSize',5,'MarkerFaceColor',[0.4,0.4,0.4]);
+%     kpf = keypoints_arm(qf,p);
+%     rAf = kpf(:,1);
+%     rBf = kpf(:,2);
+%     rCf = kpf(:,3);
+%     plot([0 rAf(1)],[0 rAf(2)],'Color',[0.55,0.55,0.55],'LineWidth',2);
+%     plot([rAf(1) rBf(1)],[rAf(2) rBf(2)],'Color',[0.55,0.55,0.55],'LineWidth',2);
+%     plot([rBf(1) rCf(1)],[rBf(2) rCf(2)],'Color',[0.55,0.55,0.55],'LineWidth',2);
+%     plot([0 rAf(1) rBf(1)],[0 rAf(2) rBf(2)],'o','Color',[0.55,0.55,0.55],'MarkerSize',5,'MarkerFaceColor',[0.55,0.55,0.55]);
     
     xlabel('X'); ylabel('Y'); legend('Des','TO w/ m_{eff}','TO no m_{eff}');
     axis equal; 
@@ -137,16 +136,14 @@ for ii=1:N
     % plot effective mass over time
     meff(1,1) = meff(1,2);
     meff_nm(1,1) = meff_nm(1,2); % shouldn't be any velocity at t=0 (just numerical noise from optimization), set to meff at next time-step for nice visuals 
-    meff_l3_nm(1,1) = meff_l3_nm(1,2);
     subplot(1,2,2); hold on;
     plot(time_vec,meff(1,:),'LineWidth',1.25); % add 'o-'
     plot(time_vec,meff_nm(1,:),'LineWidth',1.25);
-    plot(time_vec,meff_l3_nm(1,:),'LineWidth',1.25);
 %     plot(time_vec,meff(2,:),'LineWidth',1.25);
 %     plot(time_vec,meff(3,:),'LineWidth',1.25);
     xlabel('Time'); ylabel('m_{eff}'); 
 %     legend('Actual','Min','Max');
-    legend('TO w/ m_{eff}', 'TO no m_{eff}', 'TO link3');
+    legend('TO w/ m_{eff}', 'TO no m_{eff}');
     ylim([0, 1.5]);
     
     plt_title = sprintf('Optimized trajectory and effective mass for reference trajectory #%d', ii);

@@ -87,7 +87,7 @@ mu_o = 0.5;                           % friction coefficient with surface
 % arrange in vector
 p_obj = [mo Io radius mu_o g xc yc]'; % appended starting location of block
 
-%% import randomly generated linear trajectory
+%% import randomly generated trajectories
 % traj_lib = load('random_linear_traj.mat');
 traj_lib = load('random_sinusoid_traj.mat');
 
@@ -96,7 +96,7 @@ num_traj = size(traj_lib.trajectories,2);
 TO_data = struct('pts',[],'vels',[],'time',[],'data',[]);
 TO_data = repmat(TO_data,1,num_traj);
 
-for ti=1:2 %num_traj
+for ti=1:num_traj
 
     %% define trajectory
     num_pts = 51;
