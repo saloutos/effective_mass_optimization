@@ -9,7 +9,7 @@
 
 %% Setup parameters
 
-N = 100; % number of trajectories
+N = 30; % number of trajectories
 
 % choose to discretize arena space, pick random points, rather than generate random coordinates 
 steps = 101;

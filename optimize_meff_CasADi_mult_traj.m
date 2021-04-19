@@ -88,14 +88,15 @@ mu_o = 0.5;                           % friction coefficient with surface
 p_obj = [mo Io radius mu_o g xc yc]'; % appended starting location of block
 
 %% import randomly generated linear trajectory
-traj_lib = load('random_linear_traj.mat');
+% traj_lib = load('random_linear_traj.mat');
+traj_lib = load('random_sinusoid_traj.mat');
 
 %% giant for loop running optimization for each trajectory
 num_traj = size(traj_lib.trajectories,2);
 TO_data = struct('pts',[],'vels',[],'time',[],'data',[]);
 TO_data = repmat(TO_data,1,num_traj);
 
-for ti=1:num_traj
+for ti=1:2 %num_traj
 
     %% define trajectory
     num_pts = 51;
@@ -106,12 +107,16 @@ for ti=1:num_traj
     traj_ind = ti;    
     traj_sample = traj_lib.trajectories(:,traj_ind);
 
-    pts_x = linspace(traj_sample(1),traj_sample(2),num_pts);
-    pts_y = linspace(traj_sample(3),traj_sample(4),num_pts);
+%     pts_x = linspace(traj_sample(1),traj_sample(2),num_pts);
+%     pts_y = linspace(traj_sample(3),traj_sample(4),num_pts);
+% 
+%     % desired end-effector trajectory
+%     pts = [pts_x;pts_y];
 
-    % desired end-effector trajectory
-    pts = [pts_x;pts_y];
-
+    % if using sinusoidal trajectories
+    pts = traj_lib.pts(:,:,traj_ind); % returns [pts_x;pts_y] of that trajectory
+    
+    
     vels = diff(pts,1,2)/dt; % populate velocity vectors?
     vels = [zeros(2,1), vels]; % pad with zeros for first point in trajectory
 
@@ -408,58 +413,62 @@ for ti=1:num_traj
     TO_data(ti).data.meff = meff_star;
     TO_data(ti).data.peff = peff_star;
     
+    %% Animate Solution
+    % showmotion(model, time_vec, q_star);
+
+    %% Initial Plots
+    % same plots as before for optimization results
+    % TODO: eventually add forward simulation with block back in?
+
+%     figure(2); clf;
+%     subplot(3,1,1); hold on;
+%     plot(time_vec, q_star); 
+%     xlabel('Time'); ylabel('Joint Angle'); legend('q1','q2','q3');
+%     subplot(3,1,2); hold on;
+%     plot(time_vec, dq_star);
+%     xlabel('Time'); ylabel('Joint Velocity'); legend('dq1','dq2','dq3');
+%     subplot(3,1,3); hold on;
+%     plot(time_vec, u_star);
+%     xlabel('Time'); ylabel('Joint Torque'); legend('u1','u2','u3');
+% 
+%     figure(3); clf; 
+%     subplot(2,1,1); hold on;
+%     plot(time_vec,meff_star(1,:),'o-','LineWidth',1.25);
+%     plot(time_vec,meff_star(2:3,:),'LineWidth',1.25);
+%     xlabel('Time'); ylabel('Effective Mass'); legend('Actual','Min','Max');
+%     subplot(2,1,2); hold on;
+%     plot(time_vec, peff_star(3,:),'LineWidth',1.25);
+%     xlabel('Time'); ylabel('Effective Momentum');
+% 
+%     figure(4); clf;
+%     subplot(2,1,1); hold on;
+%     plot(time_vec, p_star(3,:));
+%     xlabel('Time'); ylabel('Endpoint Position Error');
+%     subplot(2,1,2); hold on;
+%     plot(time_vec, v_star(3,:));
+%     xlabel('Time'); ylabel('Endpoint Velocity Error');
+% 
+%     % animation of kinematics from optimization and dynamic simulation
+%     % filename = 'TO_mod_cost_sine_curve_meff_direct.gif'; % save animation as a gif
+%     figure(1);
+%     % for ii=1:num_pts
+%     for ii=1 % just generate the plot
+%         t_i = time_vec(ii);
+%         z_i = [q_star(:,ii); dq_star(:,ii)];
+%         plot_arm_kinematics(t_i,z_i,p,meff_star(:,ii),p_star,pts,vels(:,ii));
+%     %     if ii==1
+%     %         gif(filename,'DelayTime',dt);
+%     %     else
+%     %         gif;
+%     %     end
+%         pause(dt);
+%     end
+    
+    
+    
 end
 
-%% Animate Solution
-% showmotion(model, time_vec, q_star);
 
-%% Initial Plots
-% same plots as before for optimization results
-% TODO: eventually add forward simulation with block back in?
-
-% figure(2); clf;
-% subplot(3,1,1); hold on;
-% plot(time_vec, q_star); 
-% xlabel('Time'); ylabel('Joint Angle'); legend('q1','q2','q3');
-% subplot(3,1,2); hold on;
-% plot(time_vec, dq_star);
-% xlabel('Time'); ylabel('Joint Velocity'); legend('dq1','dq2','dq3');
-% subplot(3,1,3); hold on;
-% plot(time_vec, u_star);
-% xlabel('Time'); ylabel('Joint Torque'); legend('u1','u2','u3');
-% 
-% figure(3); clf; 
-% subplot(2,1,1); hold on;
-% plot(time_vec,meff_star(1,:),'o-','LineWidth',1.25);
-% plot(time_vec,meff_star(2:3,:),'LineWidth',1.25);
-% xlabel('Time'); ylabel('Effective Mass'); legend('Actual','Min','Max');
-% subplot(2,1,2); hold on;
-% plot(time_vec, peff_star(3,:),'LineWidth',1.25);
-% xlabel('Time'); ylabel('Effective Momentum');
-% 
-% figure(4); clf;
-% subplot(2,1,1); hold on;
-% plot(time_vec, p_star(3,:));
-% xlabel('Time'); ylabel('Endpoint Position Error');
-% subplot(2,1,2); hold on;
-% plot(time_vec, v_star(3,:));
-% xlabel('Time'); ylabel('Endpoint Velocity Error');
-% 
-% % animation of kinematics from optimization and dynamic simulation
-% % filename = 'TO_mod_cost_sine_curve_meff_direct.gif'; % save animation as a gif
-% figure(1);
-% % for ii=1:num_pts
-% for ii=1 % just generate the plot
-%     t_i = time_vec(ii);
-%     z_i = [q_star(:,ii); dq_star(:,ii)];
-%     plot_arm_kinematics(t_i,z_i,p,meff_star(:,ii),p_star,pts,vels(:,ii));
-% %     if ii==1
-% %         gif(filename,'DelayTime',dt);
-% %     else
-% %         gif;
-% %     end
-%     pause(dt);
-% end
 
 %% Functions
 

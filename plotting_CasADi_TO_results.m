@@ -12,6 +12,7 @@ clear all
 load('multi_traj_data_unconstrained.mat');
 load('multi_traj_data_no_meff.mat');
 load('random_linear_traj.mat');
+% load('random_sinusoid_traj.mat');
 
 % define arm parameters
 m1 = 1;                 m2 = 1;
