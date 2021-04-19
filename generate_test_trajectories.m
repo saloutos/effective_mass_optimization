@@ -4,6 +4,8 @@
 % Andrew SaLoutos
 % 4/16/2021
 
+% generates linear trajectories
+
 %% Setup parameters
 
 N = 30; % number of trajectories
