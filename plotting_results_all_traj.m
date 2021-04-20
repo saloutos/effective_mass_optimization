@@ -11,8 +11,8 @@ addpath(genpath('block_functions'))
 clear all
 
 % load data
-% load('multi_traj_data_linear.mat');
-load('multi_traj_data_sinusoid.mat');
+load('multi_traj_data_linear.mat');
+% load('multi_traj_data_sinusoid.mat');
 
 % each should contain TO_data_plain, TO_data_meff, TO_data_link3, and
 % TO_data_meff_link3
@@ -98,6 +98,8 @@ plot(solve_times(3,:),'o-'); plot(solve_times(4,:),'o-');
 plot(ones(1,N),'r--');
 xlabel('Traj #'); ylabel('Solve Time');
 legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+title('Optimization Solve Times for Random Trajectories');
+
 
 figure(4); clf;
 subplot(2,2,1); hold on;
@@ -129,3 +131,5 @@ plot(avg_v_error(3,:)); plot(avg_v_error(4,:));
 xlabel('Traj #'); ylabel('Mean v_{err}'); 
 legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
 title('Average Velocity Tracking Error');
+
+sgtitle('Comparing TO Performance Across Random Trajectories');

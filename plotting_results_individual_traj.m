@@ -33,7 +33,12 @@ p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_B
 
 % iterate through each trajectory and plot
 N = size(TO_data_plain,2);
-for ii=1:N
+
+% struct to save frames for video
+F1(N) = struct('cdata',[],'colormap',[]);
+F2(N) = struct('cdata',[],'colormap',[]);
+
+for ii=1:2 %N
 %     if (ii==6) || (ii==13) %could also use (TO_data.data == 'Bad')
 %        % bad TO outputs
 %        continue
@@ -105,10 +110,10 @@ for ii=1:N
     plot([rBf_m_l3(1) rCf_m_l3(1)],[rBf_m_l3(2) rCf_m_l3(2)],'Color',[0.45,0.45,0.45],'LineWidth',2);
     plot([0 rAf_m_l3(1) rBf_m_l3(1)],[0 rAf_m_l3(2) rBf_m_l3(2)],'o','Color',[0.45,0.45,0.45],'MarkerSize',5,'MarkerFaceColor',[0.45,0.45,0.45]);
     
-    xlabel('X'); ylabel('Y'); legend('Des','TO plain','TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+    xlabel('X'); ylabel('Y'); legend({'Des','TO plain','TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both'}, 'FontSize',6);
     axis equal; 
 %     xlim([-0.5,1.5]); ylim([-1.0,1.0]);
-    xlim([0.3, 1.3]); ylim([-0.5,0.5]);
+    xlim([-0.1, 1.5]); ylim([-0.7,0.7]);
     
     % plot effective mass over time
     meff(1,1) = meff(1,2);
@@ -124,11 +129,14 @@ for ii=1:N
 %     plot(time_vec,meff(3,:),'LineWidth',1.25);
     xlabel('Time'); ylabel('m_{eff}'); 
 %     legend('Actual','Min','Max');
-    legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+    legend({'TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both'},'FontSize',6);
     ylim([0, 1.5]);
     
     plt_title = sprintf('Optimized trajectory and effective mass for reference trajectory #%d', ii);
     sgtitle(plt_title);
+    
+    % save figure as frame
+    F1(ii) = getframe(gcf);
     
     % also plot velocity and position tracking error over time
     figure(2); clf; % TODO: eventually combine with other figure?
@@ -138,7 +146,7 @@ for ii=1:N
     plot(time_vec, act_pts_l3(3,:),'LineWidth',1.25);
     plot(time_vec, act_pts_m_l3(3,:),'LineWidth',1.25);
     xlabel('Time'); ylabel('Position Error');
-    legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+%     legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
     subplot(1,2,2); hold on;
     plot(time_vec, verr, 'LineWidth',1.25);
     plot(time_vec, verr_m, 'LineWidth',1.25);
@@ -150,10 +158,39 @@ for ii=1:N
     plt_title = sprintf('Tracking errors for reference trajectory #%d', ii);
     sgtitle(plt_title);
     
+    % save figure as frame
+    F2(ii) = getframe(gcf);
+    
     % stop between each trajectory?
-    pause;
+%     pause(0.5);
+%     pause;
     % TODO: make this a timed pause and record the animation as a video?
     
 end
+
+% write videos here
+% disp('Writing videos...');
+% filename1 = 'figure1_sinusoid_traj.avi'; % TODO: put in sub-folder
+% filename2 = 'figure2_sinusoid_traj.avi';
+% 
+% v1 = VideoWriter(filename1);
+% v1.FrameRate = 30; % optional: control frame rate
+% open(v1)
+% for ii=1:N % for each trajectory
+%     for jj=1:60 % write 60 frames (two seconds) to video
+%         writeVideo(v1,F1(ii));
+%     end
+% end
+% close(v1)
+% v2 = VideoWriter(filename2);
+% v2.FrameRate = 30; % optional: control frame rate
+% open(v2)
+% for ii=1:N % for each trajectory
+%     for jj=1:60 % write 60 frames (two seconds) to video
+%         writeVideo(v2,F2(ii));
+%     end
+% end
+% close(v2)
+% disp('...done!');
 
 
