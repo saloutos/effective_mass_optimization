@@ -12,7 +12,7 @@ clear all
 
 % load data
 % load('multi_traj_data_linear_ikp_constr.mat');
-load('multi_traj_data_sinusoid_ikp_constr.mat');
+load('multi_traj_data_sinusoid_ikp.mat');
 
 % each should contain TO_data_plain, TO_data_meff, TO_data_link3, and
 % TO_data_meff_link3
@@ -39,20 +39,11 @@ F1(N) = struct('cdata',[],'colormap',[]);
 F2(N) = struct('cdata',[],'colormap',[]);
 
 for ii=1:N
-    if ischar(TO_data_plain(ii).data) || ischar(TO_data_meff(ii).data) || ischar(TO_data_link3(ii).data) || ischar(TO_data_meff_link3(ii).data)
-        % bad TO outputs, just don't plot?
-        figure(1); clf;
-        plt_title = sprintf('Optimized trajectory and effective mass for reference trajectory #%d', ii);
-        sgtitle(plt_title);
-        % save figure as frame
-        F1(ii) = getframe(gcf);
-        figure(2); clf;
-        plt_title = sprintf('Tracking errors for reference trajectory #%d', ii);
-        sgtitle(plt_title);
-        % save figure as frame
-        F2(ii) = getframe(gcf);
-        continue
-    end
+%     if (ii==6) || (ii==13) %could also use (TO_data.data == 'Bad')
+%        % bad TO outputs
+%        continue
+%     end
+    if (ischar(TO_data.data)
 
     time_vec = TO_data_plain(ii).time;
     des_pts = TO_data_plain(ii).pts;
@@ -180,8 +171,8 @@ end
 
 % write videos here
 disp('Writing videos...');
-filename1 = 'Figures/figure1_sinusoid_traj_ikp_constr.avi'; % TODO: put in sub-folder
-filename2 = 'Figures/figure2_sinusoid_traj_ikp_constr.avi';
+filename1 = 'Figures/figure1_sinusoid_traj_ikp.avi'; % TODO: put in sub-folder
+filename2 = 'Figures/figure2_sinusoid_traj_ikp.avi';
 
 v1 = VideoWriter(filename1);
 v1.FrameRate = 30; % optional: control frame rate

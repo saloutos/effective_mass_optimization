@@ -11,8 +11,8 @@ addpath(genpath('block_functions'))
 clear all
 
 % load data
-% load('multi_traj_data_linear_ikp.mat');
-load('multi_traj_data_sinusoid_ikp.mat');
+load('multi_traj_data_linear_ikp.mat');
+% load('multi_traj_data_sinusoid_ikp_constr.mat');
 
 
 
@@ -45,8 +45,7 @@ avg_meff = zeros(4,N);
 
 bad_results = zeros(4,N);
 
-summary_data = zeros(4,6);
-summary_data_err = zeros(4,6);
+summary_results = zeros(4,6);
 
 for ii=1:4 % for each cost function
     
@@ -125,68 +124,55 @@ for ii=1:N
     % save data
     meff_ratios(:,ii) = [mean(ratio_m); mean(ratio_l3); mean(ratio_m_l3)];
     
-    meffs = [meff_base; meff_m; meff_l3; meff_m_l3];
     
     % get summary data
     summary_data(:,1) = mean(solve_times,2);
     summary_data(:,2) = min(solve_times,[],2);
     summary_data(:,3) = max(solve_times,[],2);
-    summary_data(:,4) = mean(avg_meff,2);
-    summary_data(:,5) = min(avg_meff,[],2);
-    summary_data(:,6) = max(avg_meff,[],2);
     
-    summary_data_err(:,1) = mean(avg_p_error,2);
-    summary_data_err(:,2) = min(avg_p_error,[],2);
-    summary_data_err(:,3) = max(avg_p_error,[],2);
-    summary_data_err(:,4) = mean(avg_v_error,2);
-    summary_data_err(:,5) = min(avg_v_error,[],2);
-    summary_data_err(:,6) = max(avg_v_error,[],2);
     
 end
 
-summary_data
-
-summary_data_err
 
 % plot quantities
-% figure(3); clf; hold on;
-% plot(solve_times(1,:),'o-'); plot(solve_times(2,:),'o-');
-% plot(solve_times(3,:),'o-'); plot(solve_times(4,:),'o-');
-% plot(ones(1,N),'r--');
-% xlabel('Traj #'); ylabel('Solve Time');
-% legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
-% title('Optimization Solve Times for Random Trajectories');
-% 
-% 
-% figure(4); clf;
-% subplot(2,2,1); hold on;
-% plot(meff_ratios(1,:));
-% plot(meff_ratios(2,:));
-% plot(meff_ratios(3,:));
-% plot(ones(1,N),'r--');
-% xlabel('Traj #'); ylabel('m_{eff} Ratio');
-% legend('TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
-% title('Ratio of m_{eff} to Plain TO');
-% 
-% subplot(2,2,2); hold on;
-% plot(avg_meff(1,:)); plot(avg_meff(2,:));
-% plot(avg_meff(3,:)); plot(avg_meff(4,:));
-% xlabel('Traj #'); ylabel('Mean m_{eff}'); 
-% legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
-% title('Average m_{eff}');
-% 
-% subplot(2,2,3); hold on;
-% plot(avg_p_error(1,:)); plot(avg_p_error(2,:));
-% plot(avg_p_error(3,:)); plot(avg_p_error(4,:));
-% xlabel('Traj #'); ylabel('Mean p_{err}'); 
-% legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
-% title('Average Position Tracking Error');
-% 
-% subplot(2,2,4); hold on;
-% plot(avg_v_error(1,:)); plot(avg_v_error(2,:));
-% plot(avg_v_error(3,:)); plot(avg_v_error(4,:));
-% xlabel('Traj #'); ylabel('Mean v_{err}'); 
-% legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
-% title('Average Velocity Tracking Error');
-% 
-% sgtitle('Comparing TO Performance Across Random Trajectories');
+figure(3); clf; hold on;
+plot(solve_times(1,:),'o-'); plot(solve_times(2,:),'o-');
+plot(solve_times(3,:),'o-'); plot(solve_times(4,:),'o-');
+plot(ones(1,N),'r--');
+xlabel('Traj #'); ylabel('Solve Time');
+legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+title('Optimization Solve Times for Random Trajectories');
+
+
+figure(4); clf;
+subplot(2,2,1); hold on;
+plot(meff_ratios(1,:));
+plot(meff_ratios(2,:));
+plot(meff_ratios(3,:));
+plot(ones(1,N),'r--');
+xlabel('Traj #'); ylabel('m_{eff} Ratio');
+legend('TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+title('Ratio of m_{eff} to Plain TO');
+
+subplot(2,2,2); hold on;
+plot(avg_meff(1,:)); plot(avg_meff(2,:));
+plot(avg_meff(3,:)); plot(avg_meff(4,:));
+xlabel('Traj #'); ylabel('Mean m_{eff}'); 
+legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+title('Average m_{eff}');
+
+subplot(2,2,3); hold on;
+plot(avg_p_error(1,:)); plot(avg_p_error(2,:));
+plot(avg_p_error(3,:)); plot(avg_p_error(4,:));
+xlabel('Traj #'); ylabel('Mean p_{err}'); 
+legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+title('Average Position Tracking Error');
+
+subplot(2,2,4); hold on;
+plot(avg_v_error(1,:)); plot(avg_v_error(2,:));
+plot(avg_v_error(3,:)); plot(avg_v_error(4,:));
+xlabel('Traj #'); ylabel('Mean v_{err}'); 
+legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+title('Average Velocity Tracking Error');
+
+sgtitle('Comparing TO Performance Across Random Trajectories');
