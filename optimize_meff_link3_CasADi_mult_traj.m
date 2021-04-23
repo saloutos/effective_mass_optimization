@@ -127,6 +127,8 @@ for cc = 1:4
         dt = time_vec(2)-time_vec(1);
 
         traj_ind = ti;    
+        
+        % if using linear trajectories
 %         traj_sample = traj_lib.trajectories(:,traj_ind);
 % 
 %         pts_x = linspace(traj_sample(1),traj_sample(2),num_pts);
@@ -279,20 +281,20 @@ for cc = 1:4
         z_0 = [opt_var.q(:,1); opt_var.dq(:,1)];
         ee_temp0 = position_tip(z_0,p);
         %ceq_q_0 = [ee_temp0(1:2)-ee_0; opt_var.dq(:,1)];
-    %     opti.subject_to(ee_temp0(1:2)-ee_0 == zeros(2,1))
+        opti.subject_to(ee_temp0(1:2)-ee_0 == zeros(2,1))
         opti.subject_to(opt_var.dq(:,1) == zeros(3,1))
 
         ee_f = pts(:,end);
         z_f = [opt_var.q(:,end); opt_var.dq(:,end)];
         ee_tempf = position_tip(z_f,p);
         %ceq_q_f = [ee_tempf(1:2)-ee_f]; %; dq(:,end)];
-    %     opti.subject_to(ee_tempf(1:2)-ee_f == zeros(2,1))
+        opti.subject_to(ee_tempf(1:2)-ee_f == zeros(2,1))
 
         %% Joint and Torque Limits
 
         % define limits
-        q_ub = [pi;pi;pi];
-        q_lb = [-pi;-pi;-pi];
+        q_ub = 1.5*[pi;pi;pi]; % multiply by 1.5?
+        q_lb = 1.5*[-pi;-pi;-pi]; % multiply by 1.5?
 
         dq_ub = [30;30;30];
         dq_lb = [-30;-30;-30];
@@ -318,17 +320,20 @@ for cc = 1:4
 
         %% Generate Initial Guess
         % initial values
+        tic;
         z0 = zeros(9,num_pts);
         for ii=1:num_pts
             pt_i = pts(:,ii);
             vel_i = vels(:,ii);
-            z0(1:3,ii) = inverse_kinematics_init(p,pt_i); % get feasible ik solution for each point in trajectory
-            %     z0(1:3,ii) = inverse_kinematics_perp(p,pt_i,vel_i);
+%             z0(1:3,ii) = inverse_kinematics_init(p,pt_i); % get feasible ik solution for each point in trajectory
+            z0(1:3,ii) = inverse_kinematics_perp(p,pt_i,vel_i);
 
             % given solution, get approximate joint velocities using jacobian pseudoinverse
             J_i = jacobian_tip(z0(1:3,ii),p);
             z0(4:6,ii) = pinv(J_i)*[vel_i;0];
         end
+        ik_time = toc;
+%         disp(u2);
         %z0 = z0(:);
         opti.set_initial(X,z0);
 
@@ -379,7 +384,7 @@ for cc = 1:4
             %sol = opti.solve_limited();
             sol = opti.solve();
         catch
-            fprintf('\nDid not solve for trajectory #%d - try debug solution.', ti);
+            fprintf('\nDid not solve for trajectory #%d - try debug solution.\n', ti);
             TO_data(ti).data = 'Bad';
 
             % TODO: if the optimization cannot solve, try turning off
@@ -392,7 +397,8 @@ for cc = 1:4
 
         % save stats and opti?
         TO_data(ti).stats = opti.stats;
-        TO_data(ti).solve_time = opti.stats.t_wall_total;    
+        TO_data(ti).solve_time = opti.stats.t_wall_total;   
+        TO_data(ti).ik_time = ik_time; % doesn't hurt to save this too
         TO_data(ti).cost_weights = alpha_vec; % doesn't hurt to save this too
         
         % TODO: setup this logic for catching error to handle infeasible solution
@@ -457,49 +463,49 @@ for cc = 1:4
         % same plots as before for optimization results
         % TODO: eventually add forward simulation with block back in?
 
-    %     figure(2); clf;
-    %     subplot(3,1,1); hold on;
-    %     plot(time_vec, q_star); 
-    %     xlabel('Time'); ylabel('Joint Angle'); legend('q1','q2','q3');
-    %     subplot(3,1,2); hold on;
-    %     plot(time_vec, dq_star);
-    %     xlabel('Time'); ylabel('Joint Velocity'); legend('dq1','dq2','dq3');
-    %     subplot(3,1,3); hold on;
-    %     plot(time_vec, u_star);
-    %     xlabel('Time'); ylabel('Joint Torque'); legend('u1','u2','u3');
-    % 
-    %     figure(3); clf; 
-    %     subplot(2,1,1); hold on;
-    %     plot(time_vec,meff_star(1,:),'o-','LineWidth',1.25);
-    %     plot(time_vec,meff_star(2:3,:),'LineWidth',1.25);
-    %     xlabel('Time'); ylabel('Effective Mass'); legend('Actual','Min','Max');
-    %     subplot(2,1,2); hold on;
-    %     plot(time_vec, peff_star(3,:),'LineWidth',1.25);
-    %     xlabel('Time'); ylabel('Effective Momentum');
-    % 
-    %     figure(4); clf;
-    %     subplot(2,1,1); hold on;
-    %     plot(time_vec, p_star(3,:));
-    %     xlabel('Time'); ylabel('Endpoint Position Error');
-    %     subplot(2,1,2); hold on;
-    %     plot(time_vec, v_star(3,:));
-    %     xlabel('Time'); ylabel('Endpoint Velocity Error');
-    % 
-    %     % animation of kinematics from optimization and dynamic simulation
-    %     % filename = 'TO_mod_cost_sine_curve_meff_direct.gif'; % save animation as a gif
-    %     figure(1);
-    %     % for ii=1:num_pts
-    %     for ii=1 % just generate the plot
-    %         t_i = time_vec(ii);
-    %         z_i = [q_star(:,ii); dq_star(:,ii)];
-    %         plot_arm_kinematics(t_i,z_i,p,meff_star(:,ii),p_star,pts,vels(:,ii));
-    %     %     if ii==1
-    %     %         gif(filename,'DelayTime',dt);
-    %     %     else
-    %     %         gif;
-    %     %     end
-    %         pause(dt);
-    %     end
+%         figure(2); clf;
+%         subplot(3,1,1); hold on;
+%         plot(time_vec, q_star); 
+%         xlabel('Time'); ylabel('Joint Angle'); legend('q1','q2','q3');
+%         subplot(3,1,2); hold on;
+%         plot(time_vec, dq_star);
+%         xlabel('Time'); ylabel('Joint Velocity'); legend('dq1','dq2','dq3');
+%         subplot(3,1,3); hold on;
+%         plot(time_vec, u_star);
+%         xlabel('Time'); ylabel('Joint Torque'); legend('u1','u2','u3');
+%     
+%         figure(3); clf; 
+%         subplot(2,1,1); hold on;
+%         plot(time_vec,meff_star(1,:),'o-','LineWidth',1.25);
+%         plot(time_vec,meff_star(2:3,:),'LineWidth',1.25);
+%         xlabel('Time'); ylabel('Effective Mass'); legend('Actual','Min','Max');
+%         subplot(2,1,2); hold on;
+%         plot(time_vec, peff_star(3,:),'LineWidth',1.25);
+%         xlabel('Time'); ylabel('Effective Momentum');
+%     
+%         figure(4); clf;
+%         subplot(2,1,1); hold on;
+%         plot(time_vec, p_star(3,:));
+%         xlabel('Time'); ylabel('Endpoint Position Error');
+%         subplot(2,1,2); hold on;
+%         plot(time_vec, v_star(3,:));
+%         xlabel('Time'); ylabel('Endpoint Velocity Error');
+%     
+%         % animation of kinematics from optimization and dynamic simulation
+%         % filename = 'TO_mod_cost_sine_curve_meff_direct.gif'; % save animation as a gif
+%         figure(1);
+% %         for ii=1:num_pts
+%         for ii=1 % just generate the plot
+%             t_i = time_vec(ii);
+%             z_i = [q_star(:,ii); dq_star(:,ii)];
+%             plot_arm_kinematics(t_i,z_i,p,meff_star(:,ii),p_star,pts,vels(:,ii));
+%         %     if ii==1
+%         %         gif(filename,'DelayTime',dt);
+%         %     else
+%         %         gif;
+%         %     end
+%             pause(dt);
+%         end
 
 
 
@@ -550,6 +556,75 @@ function q_ik = inverse_kinematics_init(p,ee_i)
 
     q3_ik = acos( (x_ee.^2 + y_ee.^2 - l2^2 - l3^2) / (2 * l2 * l3) ); % this can be +/-, leave as just + for now
     q2_ik = atan2(y_ee,x_ee) - atan2( (l3*sin(q3_ik)), (l2+(l3*cos(q3_ik))) );
+
+    % outputs
+    q_ik = [q1_ik;q2_ik;q3_ik];
+
+end
+
+function q_ik = inverse_kinematics_perp(p,ee_i,ve_i)
+    % pull out necessary parameters
+    l1 = p(14);
+    l2 = p(15);
+    l3 = p(16);
+
+    % pull out desired end-effector position
+    % note: will have to do interpolation eventually here
+    x_ee = ee_i(1);
+    y_ee = ee_i(2);
+
+    vx_ee = ve_i(1);
+    vy_ee = ve_i(2);
+    
+    qv = atan2(vy_ee,vx_ee); % angle of velocity vector
+    
+    % two candidate link 3 angles
+    q3_1 = qv + pi/2;
+    q3_2 = qv - pi/2;
+    
+    x_B1 = x_ee - l3*cos(q3_1);
+    y_B1 = y_ee - l3*sin(q3_1);
+    
+    x_B2 = x_ee - l3*cos(q3_2);
+    y_B2 = y_ee - l3*sin(q3_2);
+    
+    d1 = sqrt(x_B1^2 + y_B1^2);
+    d2 = sqrt(x_B2^2 + y_B2^2);
+    
+    % select a direction
+    if (d1<(l1+l2))||(d2<(l1+l2))
+        if (d1<d2)
+            q3_ik = q3_1;
+            x_B = x_B1;
+            y_B = y_B1;
+        else
+            q3_ik = q3_2;
+            x_B = x_B2;
+            y_B = y_B2;
+        end
+        
+        % ik from origin to [x_B,y_B]
+        q2_ik = acos( (x_B.^2 + y_B.^2 - l1^2 - l2^2) / (2 * l1 * l2) ); % this can be +/-, leave as just + for now
+        q1_ik = atan2(y_B,x_B) - atan2( (l2*sin(q2_ik)), (l1+(l2*cos(q2_ik))) );
+
+    else
+        % revert to normal ik if neither perpendicular point is valid?
+        
+        % set q1 initially
+        % calculate q2 and q3
+        q1_ik = 0.0;
+        x_A = l1*cos(q1_ik);
+        y_A = l1*sin(q1_ik);
+
+        % alternatively, could set th3 = q1+q2+q3 so that the third link is
+        % perpendicular to the desired velocity (to start)
+
+        x_ee = x_ee-x_A; % distances taken from second joint
+        y_ee = y_ee-y_A;
+
+        q3_ik = acos( (x_ee.^2 + y_ee.^2 - l2^2 - l3^2) / (2 * l2 * l3) ); % this can be +/-, leave as just + for now
+        q2_ik = atan2(y_ee,x_ee) - atan2( (l3*sin(q3_ik)), (l2+(l3*cos(q3_ik))) );
+    end  
 
     % outputs
     q_ik = [q1_ik;q2_ik;q3_ik];

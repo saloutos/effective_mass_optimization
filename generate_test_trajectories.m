@@ -17,10 +17,12 @@ arena_y = linspace(-0.4, 0.4, steps);
 
 min_traj_length = 0.2; % minimum length of trajectory
 
-trajectories = zeros(4,N); % each column is [x0;xf;y0;yf;]
-% eventually save longer sets of points? or let optimization script run linspace() to fill in trajectories
+
 
 %% Select trajectory endpoints
+
+trajectories = zeros(4,N); % each column is [x0;xf;y0;yf;]
+% eventually save longer sets of points? or let optimization script run linspace() to fill in trajectories
 
 % for N trajectories...
 for ii=1:N
@@ -39,7 +41,10 @@ figure; hold on;
 for ii=1:N
     plot(trajectories(1:2,ii),trajectories(3:4,ii),'o-','LineWidth',1.5);
 end
+% plot arena
+x_a = [0.4, 1.2, 1.2, 0.4, 0.4];
+y_a = [-0.4, -0.4, 0.4, 0.4, -0.4];
+plot(x_a,y_a,'r--');
 axis equal;
-xlim([arena_x(1),arena_x(end)]); ylim([arena_y(1),arena_y(end)]);
+xlim([arena_x(1)-0.4,arena_x(end)+0.4]); ylim([arena_y(1)-0.4,arena_y(end)+0.4]);
 xlabel('X'); ylabel('Y'); title('Randomly Generated Linear Trajectories');
-
