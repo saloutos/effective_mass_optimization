@@ -84,7 +84,7 @@ T_m3 = (1/2)*m_motor*dot(dr_motor3,dr_motor3) + (1/2)*I_motor*omega2^2;
 T_m4 = (1/2)*m_motor*dot(dr_motor4,dr_motor4) + (1/2)*I_motor*omega3^2;
 
 % rotors
-T_mr1 = (1/2)*Ir*(N*th1)^2;
+T_mr1 = (1/2)*Ir*(N*dth1)^2;
 T_mr2 = (1/2)*Ir*(dth1 + N*dth2)^2;
 T_mr3 = (1/2)*Ir*(dth1 + dth2 + N*dth3)^2;
 T_mr4 = (1/2)*Ir*(dth1 + dth2 + dth3 + N*dth4)^2;

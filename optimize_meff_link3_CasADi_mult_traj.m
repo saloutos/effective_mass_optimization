@@ -140,7 +140,7 @@ for cc = 1:4
         % if using sinusoidal trajectories
         pts = traj_lib.pts(:,:,traj_ind); % returns [pts_x;pts_y] of that trajectory
 
-
+        
         vels = diff(pts,1,2)/dt; % populate velocity vectors?
         vels = [zeros(2,1), vels]; % pad with zeros for first point in trajectory
 
@@ -281,14 +281,17 @@ for cc = 1:4
         z_0 = [opt_var.q(:,1); opt_var.dq(:,1)];
         ee_temp0 = position_tip(z_0,p);
         %ceq_q_0 = [ee_temp0(1:2)-ee_0; opt_var.dq(:,1)];
-        opti.subject_to(ee_temp0(1:2)-ee_0 == zeros(2,1))
+        
         opti.subject_to(opt_var.dq(:,1) == zeros(3,1))
 
         ee_f = pts(:,end);
         z_f = [opt_var.q(:,end); opt_var.dq(:,end)];
         ee_tempf = position_tip(z_f,p);
-        %ceq_q_f = [ee_tempf(1:2)-ee_f]; %; dq(:,end)];
-        opti.subject_to(ee_tempf(1:2)-ee_f == zeros(2,1))
+        %ceq_q_f = [ee_tempf(1:2)-ee_f]; %; dq(:,end)]; 
+        
+        % if using constraints...
+        opti.subject_to(ee_temp0(1:2)-ee_0 == zeros(2,1)) % initial position constraint
+        opti.subject_to(ee_tempf(1:2)-ee_f == zeros(2,1)) % final position constraint
 
         %% Joint and Torque Limits
 
@@ -506,8 +509,6 @@ for cc = 1:4
 %         %     end
 %             pause(dt);
 %         end
-
-
 
     end % end for loop for trajectories
     
