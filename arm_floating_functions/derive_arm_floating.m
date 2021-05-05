@@ -1,13 +1,10 @@
 clear
-name = 'arm_locked';
-
-% TODO: replace with floating-base dynamics
-
+name = 'arm_floating';
 
 % Define variables for time, generalized coordinates + derivatives, controls, and parameters 
 syms t th1 th2 th3 dth1 dth2 dth3 ddth1 ddth2 ddth3 real % coords
 syms xb yb thb dxb dyb dthb ddxb ddyb ddthb real % base coords
-sums mb Ib real % inertial params for base
+syms mb Ib real % inertial params for base
 syms m1 m2 m3 m_motor I1 I2 I3 I_motor real % inertial params for links and motors
 syms l_O_m1 l_A_m2 l_B_m3 g real % CoM values for links
 syms l_OA l_AB l_BC real % link lengths, motors are located at points O,A,B respectively
@@ -131,28 +128,53 @@ eom = ddt(jacobian(L,dq).') - jacobian(L,q).' - Q;
 
 % Rearrange Equations of Motion
 A = jacobian(eom,ddq);
-b = A*ddq - eom;
-
-% Equations of motion are
-% eom = A *ddq + (coriolis term) + (gravitational term) - Q = 0
-Mass_Joint_Sp = A;
-Mass_Joint_Sp_inv = inv(A);
-Grav_Joint_Sp = simplify(jacobian(Vg, q)');
-Corr_Joint_Sp = simplify( eom + Q - Grav_Joint_Sp - A*ddq);
-
 % Compute endpoint jacobian
-phi = th1 + th2 + th3;
-dphi = dth1 + dth2 + dth3;
-qC = [rC(1); rC(2); phi]; % define [x,y,phi] of end-effector as world coordinates
-dqC = [drC(1); drC(2); dphi];
+phi = thb + th1 + th2 + th3;
+dphi = dthb + dth1 + dth2 + dth3;
+qC = [rC(1); rC(2); phi];
 J = jacobian(qC,q);
+Jv = J(1:2,:); % this should be [Jb, Jj];
 
-% Partition endpoint Jacobian
-Jv = J(1:2,:);
-Jw = J(3,:);
+% partitions?
+Hbb = A(1:3,1:3);
+Hbj = A(1:3,4:end);
+Hjb = A(4:end,1:3);
+Hjj = A(4:end,4:end);
+Jb = Jv(:,1:3);
+Jj = Jv(:,4:end);
 
-% Compute ddt( J )
-dJ= reshape( ddt(J(:)) , size(J) );
+% generate necessary functions
+matlabFunction(keypoints,'file',['keypoints_' name],'vars',{q p});
+matlabFunction(A,'file',['H_' name],'vars',{q p});
+matlabFunction(Jv,'file',['J_' name],'vars',{q p});
+% matlabFunction(Hbb,'file',['Hbb_' name],'vars',{q p}); % these two aren't really necessary
+% matlabFunction(Jb,'file',['Jb_' name],'vars',{q p});
+
+
+
+
+% b = A*ddq - eom;
+% 
+% % Equations of motion are
+% % eom = A *ddq + (coriolis term) + (gravitational term) - Q = 0
+% Mass_Joint_Sp = A;
+% Mass_Joint_Sp_inv = inv(A);
+% Grav_Joint_Sp = simplify(jacobian(Vg, q)');
+% Corr_Joint_Sp = simplify( eom + Q - Grav_Joint_Sp - A*ddq);
+% 
+% % Compute endpoint jacobian
+% phi = th1 + th2 + th3;
+% dphi = dth1 + dth2 + dth3;
+% qC = [rC(1); rC(2); phi]; % define [x,y,phi] of end-effector as world coordinates
+% dqC = [drC(1); drC(2); dphi];
+% J = jacobian(qC,q);
+% 
+% % Partition endpoint Jacobian
+% Jv = J(1:2,:);
+% Jw = J(3,:);
+% 
+% % Compute ddt( J )
+% dJ= reshape( ddt(J(:)) , size(J) );
 
 % Compute operational space eom as well
 % From equations 51 and 52 in Khatib paper
@@ -178,7 +200,7 @@ dJ= reshape( ddt(J(:)) , size(J) );
 
 
 %% Generate necessary functions to simulate the arm
-z  = [q ; dq]; % state variables
+% z  = [q ; dq]; % state variables
 
 % % directory = '../AutoDerived/'; % Write functions to a separate folder because we don't usually have to see them
 % matlabFunction(A,'file',['A_' name],'vars',{z p});

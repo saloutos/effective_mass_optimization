@@ -14,6 +14,10 @@ clear all
 % load('multi_traj_data_linear_ikp_constr.mat');
 load('multi_traj_data_sinusoid_ikp_constr.mat');
 
+% make sure video filenames agree
+filename1 = 'Figures/figure1_sinusoid_traj_ikp_constr.avi';
+filename2 = 'Figures/figure2_sinusoid_traj_ikp_constr.avi';
+
 % each should contain TO_data_plain, TO_data_meff, TO_data_link3, and
 % TO_data_meff_link3
 
@@ -180,8 +184,6 @@ end
 
 % write videos here
 disp('Writing videos...');
-filename1 = 'Figures/figure1_sinusoid_traj_ikp_constr.avi'; % TODO: put in sub-folder
-filename2 = 'Figures/figure2_sinusoid_traj_ikp_constr.avi';
 
 v1 = VideoWriter(filename1);
 v1.FrameRate = 30; % optional: control frame rate
