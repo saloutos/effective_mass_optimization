@@ -8,19 +8,19 @@
 addpath(genpath('block_functions'))
 
 % addpath(genpath('mc_arm_functions'))
-% addpath(genpath('UR3_arm_functions'))
+addpath(genpath('UR3_arm_functions'))
 
 % import trajectory data
 clear all
 
 % load data
 % load('multi_traj_data_linear.mat');
-load('multi_traj_data_linear_MC.mat');
+% load('multi_traj_data_linear_MC.mat');
 % load('multi_traj_data_linear_UR3.mat');
 
 % load('multi_traj_data_sinusoid.mat');
 % load('multi_traj_data_sinusoid_MC.mat');
-% load('multi_traj_data_sinusoid_UR3.mat');
+load('multi_traj_data_sinusoid_UR3.mat');
 
 % each should contain TO_data_plain, TO_data_meff, TO_data_link3, and
 % TO_data_meff_link3
@@ -38,31 +38,31 @@ load('multi_traj_data_linear_MC.mat');
 % % arrange in vector
 % p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]';
 
-% MC arm
-m1 = 0.195;             m2 = 0.262;
-m3 = 0.053;             m_motor = 0.527;
-I1 = 0.001170;          I2 = 0.001186;
-I3 = 0.000096;          I_motor = 0.000508;
-Ir = 0.000064;          N = 6;
-l_O_m1 = 0.092;         l_A_m2 = 0.201;
-l_B_m3 = 0.038;         l_OA = 0.2085;
-l_AB = 0.265;           l_BC = 0.1225;
-g = 9.81; % do I want gravity to start?
-% parameters
-p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
-
-% % UR3 planar arm
-% m1 = 3.4445;            m2 = 1.437;
-% m3 = 1.9360;            m_motor = 0.0; % not using motor mass
-% I1 = 0.0219;            I2 = 0.0075;
-% I3 = 0.0064;            I_motor = 0.0; % not using motor inertia
-% Ir = 2.07e-5;           N = 101;
-% l_O_m1 = 0.113;         l_A_m2 = 0.163;
-% l_B_m3 = 0.0470;        l_OA = 0.24355;
-% l_AB = 0.2132;          l_BC = 0.08535;
+% % MC arm
+% m1 = 0.195;             m2 = 0.262;
+% m3 = 0.053;             m_motor = 0.527;
+% I1 = 0.001170;          I2 = 0.001186;
+% I3 = 0.000096;          I_motor = 0.000508;
+% Ir = 0.000064;          N = 6;
+% l_O_m1 = 0.092;         l_A_m2 = 0.201;
+% l_B_m3 = 0.038;         l_OA = 0.2085;
+% l_AB = 0.265;           l_BC = 0.1225;
 % g = 9.81; % do I want gravity to start?
 % % parameters
 % p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
+
+% UR3 planar arm
+m1 = 3.4445;            m2 = 1.437;
+m3 = 1.9360;            m_motor = 0.0; % not using motor mass
+I1 = 0.0219;            I2 = 0.0075;
+I3 = 0.0064;            I_motor = 0.0; % not using motor inertia
+Ir = 2.07e-5;           N = 101;
+l_O_m1 = 0.113;         l_A_m2 = 0.163;
+l_B_m3 = 0.0470;        l_OA = 0.24355;
+l_AB = 0.2132;          l_BC = 0.08535;
+g = 9.81; % do I want gravity to start?
+% parameters
+p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
 
 % define object parameters
 mo = 1;
@@ -304,7 +304,7 @@ axis ij;
 yticks([1.5,2.5,3.5]);
 yticklabels({'meff','link3','both'});
 xticks(5.5:5:30.5);
-xticklabels({'5','10','15','20','25','30'});
+xticklabels({'5','10','15','20'}); %,'25','30'});
 title('Meff ratios');
 
 subplot(3,1,2);
@@ -316,7 +316,7 @@ axis ij;
 yticks([1.5,2.5,3.5]);
 yticklabels({'meff','link3','both'});
 xticks(5.5:5:30.5);
-xticklabels({'5','10','15','20','25','30'});
+xticklabels({'5','10','15','20'}); %,'25','30'});
 title('Exit vel ratios');
 
 % subplot(5,1,2);
@@ -365,7 +365,7 @@ axis ij;
 yticks([1.5,2.5,3.5,4.5]);
 yticklabels({'plain','meff','link3','both'});
 xticks(5.5:5:30.5);
-xticklabels({'5','10','15','20','25','30'});
+xticklabels({'5','10','15','20'}); %,'25','30'});
 title('Solve Times');
 
 % outliers make this difficult to accurately represent results

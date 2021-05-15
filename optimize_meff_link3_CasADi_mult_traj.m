@@ -7,8 +7,8 @@ addpath(genpath('spatial_v2'));
 addpath(genpath('block_functions'));
 
 % addpath(genpath('arm_functions')) % for test arm
-addpath(genpath('mc_arm_functions')) % for MC arm
-% addpath(genpath('UR3_arm_functions')) % for UR3 arm
+% addpath(genpath('mc_arm_functions')) % for MC arm
+addpath(genpath('UR3_arm_functions')) % for UR3 arm
 
 import casadi.* 
 
@@ -28,31 +28,31 @@ import casadi.*
 % % arrange in vector
 % p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]';
 
-% MC arm
-m1 = 0.195;             m2 = 0.262;
-m3 = 0.053;             m_motor = 0.527;
-I1 = 0.001170;          I2 = 0.001186;
-I3 = 0.000096;          I_motor = 0.000508;
-Ir = 0.000064;          N = 6;
-l_O_m1 = 0.092;         l_A_m2 = 0.201;
-l_B_m3 = 0.038;         l_OA = 0.2085;
-l_AB = 0.265;           l_BC = 0.1225;
-g = 9.81; % do I want gravity to start?
-% parameters
-p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
-
-% % UR3 planar arm
-% m1 = 3.4445;            m2 = 1.437;
-% m3 = 1.9360;            m_motor = 0.0; % not using motor mass
-% I1 = 0.0219;            I2 = 0.0075;
-% I3 = 0.0064;            I_motor = 0.0; % not using motor inertia
-% Ir = 2.07e-5;           N = 101;
-% l_O_m1 = 0.113;         l_A_m2 = 0.163;
-% l_B_m3 = 0.0470;        l_OA = 0.24355;
-% l_AB = 0.2132;          l_BC = 0.08535;
+% % MC arm
+% m1 = 0.195;             m2 = 0.262;
+% m3 = 0.053;             m_motor = 0.527;
+% I1 = 0.001170;          I2 = 0.001186;
+% I3 = 0.000096;          I_motor = 0.000508;
+% Ir = 0.000064;          N = 6;
+% l_O_m1 = 0.092;         l_A_m2 = 0.201;
+% l_B_m3 = 0.038;         l_OA = 0.2085;
+% l_AB = 0.265;           l_BC = 0.1225;
 % g = 9.81; % do I want gravity to start?
 % % parameters
 % p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
+
+% UR3 planar arm
+m1 = 3.4445;            m2 = 1.437;
+m3 = 1.9360;            m_motor = 0.0; % not using motor mass
+I1 = 0.0219;            I2 = 0.0075;
+I3 = 0.0064;            I_motor = 0.0; % not using motor inertia
+Ir = 2.07e-5;           N = 101;
+l_O_m1 = 0.113;         l_A_m2 = 0.163;
+l_B_m3 = 0.0470;        l_OA = 0.24355;
+l_AB = 0.2132;          l_BC = 0.08535;
+g = 9.81; % do I want gravity to start?
+% parameters
+p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
 
 
 
@@ -65,8 +65,8 @@ rad_mult = 1.2;
 % traj_lib = load('random_linear_traj.mat');
 % traj_lib = load('random_sinusoid_traj.mat');
 
-traj_lib = load('random_linear_traj_MC_UR3.mat');
-% traj_lib = load('random_sinusoid_traj_MC_UR3.mat');
+% traj_lib = load('random_linear_traj_MC_UR3.mat');
+traj_lib = load('random_sinusoid_traj_MC_UR3.mat');
 
 %% Build Robot Model
 % TODO: Turn this into a function
@@ -139,7 +139,7 @@ for cc = 1:4
     
     
     % change cost function
-    alpha_vec =         [  10.0,  20.0, 5000.0, 500.0,   0.5, 1.0];
+    alpha_vec =         [ 500.0,  20.0, 5000.0, 500.0, 0.125, 1.0];
     
     if (cc==1)
         alpha_vec(1:2) = [0.0, 0.0];
@@ -170,16 +170,16 @@ for cc = 1:4
         traj_ind = ti;    
         
         % if using linear trajectories
-        traj_sample = traj_lib.trajectories(:,traj_ind);
-
-        pts_x = linspace(traj_sample(1),traj_sample(2),num_pts);
-        pts_y = linspace(traj_sample(3),traj_sample(4),num_pts);
-
-        % desired end-effector trajectory
-        pts = [pts_x;pts_y];
+%         traj_sample = traj_lib.trajectories(:,traj_ind);
+% 
+%         pts_x = linspace(traj_sample(1),traj_sample(2),num_pts);
+%         pts_y = linspace(traj_sample(3),traj_sample(4),num_pts);
+% 
+%         % desired end-effector trajectory
+%         pts = [pts_x;pts_y];
 
         % if using sinusoidal trajectories
-%         pts = traj_lib.pts(:,:,traj_ind); % returns [pts_x;pts_y] of that trajectory
+        pts = traj_lib.pts(:,:,traj_ind); % returns [pts_x;pts_y] of that trajectory
 
         
         vels = diff(pts,1,2)/dt; % populate velocity vectors?
@@ -347,19 +347,25 @@ for cc = 1:4
         q_lb = [-pi;-pi;-pi]; % multiply by 1.5 for test arm
         % could impose even stricter limits for MC, UR3 arms...see if it even gets close?
         
-        dq_ub = [30;30;30];
-        dq_lb = [-30;-30;-30];
+%         dq_ub = [30;30;30];
+%         dq_lb = [-30;-30;-30];
+        
+        % for UR3 arm...see if these will work, otherwise relax a bit but note the constraint violation
+        dq_ub = [pi;pi;2*pi];
+        dq_lb = [-pi;-pi;-2*pi];
         
         % for test arm
 %         u_ub = [20;20;20];
 %         u_lb = [-20;-20;-20];
         
         % for MC arm
-        u_ub = [18;18;4.6];
-        u_lb = [-18;-18;-4.6];
+%         u_ub = [18;18;4.6];
+%         u_lb = [-18;-18;-4.6];
         
         % for UR3 arm? check joint torque source
-
+        u_ub = [56;28;12];
+        u_lb = [-56;-28;-12];        
+        
         for ii=1:num_pts
 
             q_i = opt_var.q(:,ii);
@@ -528,50 +534,50 @@ for cc = 1:4
         % same plots as before for optimization results
         % TODO: eventually add forward simulation with block back in?
 
-%         figure(2); clf;
-%         subplot(3,1,1); hold on;
-%         plot(time_vec, q_star); 
-%         xlabel('Time'); ylabel('Joint Angle'); legend('q1','q2','q3');
-%         subplot(3,1,2); hold on;
-%         plot(time_vec, dq_star);
-%         xlabel('Time'); ylabel('Joint Velocity'); legend('dq1','dq2','dq3');
-%         subplot(3,1,3); hold on;
-%         plot(time_vec, u_star);
-%         xlabel('Time'); ylabel('Joint Torque'); legend('u1','u2','u3');
-%     
-%         figure(3); clf; 
-%         subplot(2,1,1); hold on;
-%         plot(time_vec,meff_star(1,:),'o-','LineWidth',1.25);
-%         plot(time_vec,meff_star(2:3,:),'LineWidth',1.25);
-%         xlabel('Time'); ylabel('Effective Mass'); legend('Actual','Min','Max');
-%         subplot(2,1,2); hold on;
-%         plot(time_vec, peff_star(3,:),'LineWidth',1.25);
-%         xlabel('Time'); ylabel('Effective Momentum');
-%     
-%         figure(4); clf;
-%         subplot(2,1,1); hold on;
-%         plot(time_vec, p_star(3,:));
-%         xlabel('Time'); ylabel('Endpoint Position Error');
-%         subplot(2,1,2); hold on;
-%         plot(time_vec, v_star(3,:));
-%         xlabel('Time'); ylabel('Endpoint Velocity Error');
-%     
-%         % animation of kinematics from optimization and dynamic simulation
-%         % filename = 'TO_mod_cost_sine_curve_meff_direct.gif'; % save animation as a gif
-%         figure(1);
+        figure(6); clf;
+        subplot(3,1,1); hold on;
+        plot(time_vec, q_star); 
+        xlabel('Time'); ylabel('Joint Angle'); legend('q1','q2','q3');
+        subplot(3,1,2); hold on;
+        plot(time_vec, dq_star);
+        xlabel('Time'); ylabel('Joint Velocity'); legend('dq1','dq2','dq3');
+        subplot(3,1,3); hold on;
+        plot(time_vec, u_star);
+        xlabel('Time'); ylabel('Joint Torque'); legend('u1','u2','u3');
+    
+        figure(7); clf; 
+        subplot(2,1,1); hold on;
+        plot(time_vec,meff_star(1,:),'o-','LineWidth',1.25);
+        plot(time_vec,meff_star(2:3,:),'LineWidth',1.25);
+        xlabel('Time'); ylabel('Effective Mass'); legend('Actual','Min','Max');
+        subplot(2,1,2); hold on;
+        plot(time_vec, peff_star(3,:),'LineWidth',1.25);
+        xlabel('Time'); ylabel('Effective Momentum');
+    
+        figure(8); clf;
+        subplot(2,1,1); hold on;
+        plot(time_vec, p_star(3,:));
+        xlabel('Time'); ylabel('Endpoint Position Error');
+        subplot(2,1,2); hold on;
+        plot(time_vec, v_star(3,:));
+        xlabel('Time'); ylabel('Endpoint Velocity Error');
+    
+        % animation of kinematics from optimization and dynamic simulation
+        % filename = 'TO_mod_cost_sine_curve_meff_direct.gif'; % save animation as a gif
+        figure(1);
 %         for ii=1:num_pts
-% %         for ii=1 % just generate the plot
-%             t_i = time_vec(ii);
-%             z_i = [q_star(:,ii); dq_star(:,ii)];
-%             plot_arm_kinematics(t_i,z_i,p,meff_star(:,ii),p_star,pts,vels(:,ii));
-%         %     if ii==1
-%         %         gif(filename,'DelayTime',dt);
-%         %     else
-%         %         gif;
-%         %     end
-%             pause(dt);
-%         end
-
+        for ii=1 % just generate the plot
+            t_i = time_vec(ii);
+            z_i = [q_star(:,ii); dq_star(:,ii)];
+            plot_arm_kinematics(t_i,z_i,p,meff_star(:,ii),p_star,pts,vels(:,ii));
+        %     if ii==1
+        %         gif(filename,'DelayTime',dt);
+        %     else
+        %         gif;
+        %     end
+            pause(dt);
+        end
+        
     end % end for loop for trajectories
     
     % store data in separate variables
