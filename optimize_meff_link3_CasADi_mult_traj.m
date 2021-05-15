@@ -4,29 +4,69 @@
 %% Add Libraries
 addpath(genpath('casadi'));
 addpath(genpath('spatial_v2'));
-addpath(genpath('arm_4_functions'))
-addpath(genpath('arm_functions'))
-addpath(genpath('block_functions'))
+addpath(genpath('block_functions'));
+
+% addpath(genpath('arm_functions')) % for test arm
+addpath(genpath('mc_arm_functions')) % for MC arm
+% addpath(genpath('UR3_arm_functions')) % for UR3 arm
+
 import casadi.* 
 
 %% define arm parameters
 % TODO: Use spatial v2?
-m1 = 1;                 m2 = 1;
-m3 = 0.5;               m_motor = 0.5;
-I1 = 0.02;              I2 = 0.02;
-I3 = 0.01;              I_motor = 0.000625; % assuming radius r=0.05m
-Ir = 6.25e-6;           N = 6;
-l_O_m1 = 0.25;          l_A_m2 = 0.25;
-l_B_m3 = 0.25;          l_OA = 0.5;
-l_AB = 0.5;             l_BC = 0.5;
+
+% % test arm
+% m1 = 1;                 m2 = 1;
+% m3 = 0.5;               m_motor = 0.5;
+% I1 = 0.02;              I2 = 0.02;
+% I3 = 0.01;              I_motor = 0.000625; % assuming radius r=0.05m
+% Ir = 6.25e-6;           N = 6;
+% l_O_m1 = 0.25;          l_A_m2 = 0.25;
+% l_B_m3 = 0.25;          l_OA = 0.5;
+% l_AB = 0.5;             l_BC = 0.5;
+% g = 9.81; % do I want gravity to start?
+% % arrange in vector
+% p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]';
+
+% MC arm
+m1 = 0.195;             m2 = 0.262;
+m3 = 0.053;             m_motor = 0.527;
+I1 = 0.001170;          I2 = 0.001186;
+I3 = 0.000096;          I_motor = 0.000508;
+Ir = 0.000064;          N = 6;
+l_O_m1 = 0.092;         l_A_m2 = 0.201;
+l_B_m3 = 0.038;         l_OA = 0.2085;
+l_AB = 0.265;           l_BC = 0.1225;
 g = 9.81; % do I want gravity to start?
-% arrange in vector
-p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]';
+% parameters
+p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
+
+% % UR3 planar arm
+% m1 = 3.4445;            m2 = 1.437;
+% m3 = 1.9360;            m_motor = 0.0; % not using motor mass
+% I1 = 0.0219;            I2 = 0.0075;
+% I3 = 0.0064;            I_motor = 0.0; % not using motor inertia
+% Ir = 2.07e-5;           N = 101;
+% l_O_m1 = 0.113;         l_A_m2 = 0.163;
+% l_B_m3 = 0.0470;        l_OA = 0.24355;
+% l_AB = 0.2132;          l_BC = 0.08535;
+% g = 9.81; % do I want gravity to start?
+% % parameters
+% p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
+
+
 
 rad1 = 0.05;
 rad2 = 0.05;
 rad3 = 0.05;
 rad_mult = 1.2;
+
+%% import randomly generated trajectories
+% traj_lib = load('random_linear_traj.mat');
+% traj_lib = load('random_sinusoid_traj.mat');
+
+traj_lib = load('random_linear_traj_MC_UR3.mat');
+% traj_lib = load('random_sinusoid_traj_MC_UR3.mat');
 
 %% Build Robot Model
 % TODO: Turn this into a function
@@ -87,25 +127,26 @@ mu_o = 0.5;                           % friction coefficient with surface
 % arrange in vector
 p_obj = [mo Io radius mu_o g xc yc]'; % appended starting location of block
 
-%% import randomly generated trajectories
-% traj_lib = load('random_linear_traj.mat');
-traj_lib = load('random_sinusoid_traj.mat');
-
-
 %% giant for loop running optimization for each trajectory
 % wrapped in an even bigger for loop for testing multiple cost functions
 % across all trajectories
 for cc = 1:4
     
+    % cost functions:                      [  meff, link3,      p,     v,     u,  dq]
+    % full tuned cost vector for test arm: [  10.0,  20.0, 5000.0, 500.0,   0.5, 1.0] % p,v were 1000.0, 100.0 each beforehand
+    % full tuned cost vector for MC arm:   [  10.0,  20.0, 5000.0, 500.0,   0.5, 1.0]
+    % full tuned cost vector for UR3 arm:  [ 500.0,  20.0, 5000.0, 500.0, 0.125, 1.0]
+    
+    
     % change cost function
+    alpha_vec =         [  10.0,  20.0, 5000.0, 500.0,   0.5, 1.0];
+    
     if (cc==1)
-        alpha_vec =         [  0.0,   0.0, 1000.0, 100.0, 0.5, 1.0];
+        alpha_vec(1:2) = [0.0, 0.0];
     elseif (cc==2)
-        alpha_vec =         [ 10.0,   0.0, 1000.0, 100.0, 0.5, 1.0];
+        alpha_vec(2) = 0.0;
     elseif (cc==3)
-        alpha_vec =         [  0.0,  20.0, 1000.0, 100.0, 0.5, 1.0];
-    elseif (cc==4)
-        alpha_vec =         [ 10.0,  20.0, 1000.0, 100.0, 0.5, 1.0];
+        alpha_vec(1) = 0.0;
     end
     
     disp('%%%%%%%%%%%');
@@ -129,16 +170,16 @@ for cc = 1:4
         traj_ind = ti;    
         
         % if using linear trajectories
-%         traj_sample = traj_lib.trajectories(:,traj_ind);
-% 
-%         pts_x = linspace(traj_sample(1),traj_sample(2),num_pts);
-%         pts_y = linspace(traj_sample(3),traj_sample(4),num_pts);
-% 
-%         % desired end-effector trajectory
-%         pts = [pts_x;pts_y];
+        traj_sample = traj_lib.trajectories(:,traj_ind);
+
+        pts_x = linspace(traj_sample(1),traj_sample(2),num_pts);
+        pts_y = linspace(traj_sample(3),traj_sample(4),num_pts);
+
+        % desired end-effector trajectory
+        pts = [pts_x;pts_y];
 
         % if using sinusoidal trajectories
-        pts = traj_lib.pts(:,:,traj_ind); % returns [pts_x;pts_y] of that trajectory
+%         pts = traj_lib.pts(:,:,traj_ind); % returns [pts_x;pts_y] of that trajectory
 
         
         vels = diff(pts,1,2)/dt; % populate velocity vectors?
@@ -223,9 +264,9 @@ for cc = 1:4
             p_diff = p_temp(1:2) - pts(:,ii);
             p_cost_vec(ii) = p_diff'*Qpdes*p_diff;  
             % higher cost on initial and final positions
-            if (ii==1)||(ii==num_pts)
-                p_cost_vec(ii) = 100*p_cost_vec(ii);
-            end
+%             if (ii==1)||(ii==num_pts)
+%                 p_cost_vec(ii) = 100*p_cost_vec(ii);
+%             end
         end
 
         % add costs together with weights
@@ -273,6 +314,12 @@ for cc = 1:4
             opti.subject_to(opt_var.q(:,ii)-opt_var.q(:,ii-1)-dt*opt_var.dq(:,ii-1) == zeros(3,1))
             opti.subject_to(opt_var.dq(:,ii)-opt_var.dq(:,ii-1)-dt*ddq_i1 == zeros(3,1))
 
+            % add constraints on each point of the trajectory?
+            ee_i = pts(:,ii);
+            z_i = [opt_var.q(:,ii); opt_var.dq(:,ii)];
+            ee_temp_i = position_tip(z_i,p);
+%             opti.subject_to(ee_temp_i(1:2)-ee_i == zeros(2,1))
+                        
         end
 
         % TODO: look at adding a constraint on maximum effective momentum?
@@ -296,14 +343,22 @@ for cc = 1:4
         %% Joint and Torque Limits
 
         % define limits
-        q_ub = 1.5*[pi;pi;pi]; % multiply by 1.5?
-        q_lb = 1.5*[-pi;-pi;-pi]; % multiply by 1.5?
-
+        q_ub = [pi;pi;pi]; % multiply by 1.5 for test arm
+        q_lb = [-pi;-pi;-pi]; % multiply by 1.5 for test arm
+        % could impose even stricter limits for MC, UR3 arms...see if it even gets close?
+        
         dq_ub = [30;30;30];
         dq_lb = [-30;-30;-30];
-
-        u_ub = [20;20;20];
-        u_lb = [-20;-20;-20];
+        
+        % for test arm
+%         u_ub = [20;20;20];
+%         u_lb = [-20;-20;-20];
+        
+        % for MC arm
+        u_ub = [18;18;4.6];
+        u_lb = [-18;-18;-4.6];
+        
+        % for UR3 arm? check joint torque source
 
         for ii=1:num_pts
 
@@ -417,6 +472,8 @@ for cc = 1:4
         peff_star = zeros(3,num_pts); % px, py, |p|
         p_star = zeros(3,num_pts); % xact, yact, error
         v_star = zeros(3,num_pts); % vxact, vyact, verror
+        LLv_star = zeros(4,num_pts);
+        
         for ii=1:num_pts
             z_i = [q_star(:,ii); dq_star(:,ii)];
             % calculate endpoint velocity
@@ -425,6 +482,7 @@ for cc = 1:4
             ev_i = ve_i/norm(ve_i);
             % calculate effective mass, minimum, maximum
             LLv_inv = LLv_arm_op_inv(z_i,p);
+            LLv = inv(LLv_inv);
             meff_star(1,ii) = 1/(ev_i'*LLv_inv*ev_i);
             [V,D] = eig(LLv_inv);
             if D(1,1)>D(2,2)
@@ -439,6 +497,8 @@ for cc = 1:4
             % calculate effective momentum
             peff_star(1:2,ii) = ve_i*meff_star(1,ii);
             peff_star(3,ii) = norm(ve_i)*meff_star(1,ii);
+            % store vectorized LLv for exit velocity calculation
+            LLv_star(:,ii) = LLv(:);
             % get endpoint position
             p_temp = position_tip(z_i,p);
             p_star(1:2,ii) = p_temp(1:2);
@@ -455,10 +515,12 @@ for cc = 1:4
         TO_data(ti).data.dq = dq_star;
         TO_data(ti).data.u = u_star;
         TO_data(ti).data.p = p_star;
+        
         TO_data(ti).data.v = v_star;
         TO_data(ti).data.meff = meff_star;
         TO_data(ti).data.peff = peff_star;
-
+        TO_data(ti).data.LLv = LLv_star;
+            
         %% Animate Solution
         % showmotion(model, time_vec, q_star);
 
@@ -497,8 +559,8 @@ for cc = 1:4
 %         % animation of kinematics from optimization and dynamic simulation
 %         % filename = 'TO_mod_cost_sine_curve_meff_direct.gif'; % save animation as a gif
 %         figure(1);
-% %         for ii=1:num_pts
-%         for ii=1 % just generate the plot
+%         for ii=1:num_pts
+% %         for ii=1 % just generate the plot
 %             t_i = time_vec(ii);
 %             z_i = [q_star(:,ii); dq_star(:,ii)];
 %             plot_arm_kinematics(t_i,z_i,p,meff_star(:,ii),p_star,pts,vels(:,ii));
@@ -673,16 +735,22 @@ function plot_arm_kinematics(t_i,z_i,p,meff_sol_i,ee_sol,pts,vels_i)
     clf; hold on;
     
     cur_time = sprintf('t = %.3f', t_i);
-    h_ti = text(-0.4,-0.8,cur_time);
     
+%     h_ti = text(-0.4,-0.8,cur_time);
+    h_ti = text(-0.18,-0.25,cur_time);
+
     des_pts = plot(pts(1,:), pts(2,:),'g','LineWidth',2.0); % have this already plotted?
     act_pts = plot(ee_sol(1,:), ee_sol(2,:),'Color',[0.1, 0.55, 0.1]); 
     
     % plot arena as well
     % TODO: don't have these dimensions hardcoded
     % TODO: have text showing traj_ind? include in title?
-    x_a = [0.4, 1.2, 1.2, 0.4, 0.4];
-    y_a = [-0.4, -0.4, 0.4, 0.4, -0.4];
+%     x_a = [0.4, 1.2, 1.2, 0.4, 0.4];
+%     y_a = [-0.4, -0.4, 0.4, 0.4, -0.4];
+    
+    x_a = [0.2, 0.5, 0.5, 0.2, 0.2]; % for MC, UR3 plots
+    y_a = [-0.15, -0.15, 0.15, 0.15, -0.15];
+    
     arena_pts = plot(x_a,y_a,'r--');
     
     ell_color = [0.85, 0.33, 0.];
@@ -697,7 +765,10 @@ function plot_arm_kinematics(t_i,z_i,p,meff_sol_i,ee_sol,pts,vels_i)
     h_v_i = quiver([rC(1)],[rC(2)],[ve_i(1)],[ve_i(2)],0.25,'b','LineWidth',2); % real velocity is in dark blue
     h_v_des = quiver([rC(1)],[rC(2)],[ve_des(1)],[ve_des(2)],0.25,'Color',[0.6, 0.8, 1.0],'LineWidth',2); % desired velocity is in light blue
     xlabel('X'); ylabel('Y'); axis equal; 
-    xlim([-0.5,1.5]); ylim([-1.0,1.0]);
+    
+%     xlim([-0.5,1.5]); ylim([-1.0,1.0]);
+    xlim([-0.2, 0.8]); ylim([-0.3,0.3]);
+
 
 end
 

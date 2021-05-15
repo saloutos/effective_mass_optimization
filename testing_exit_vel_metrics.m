@@ -6,6 +6,7 @@
 %% add functions
 
 addpath(genpath('arm_floating_functions'))
+addpath(genpath('arm_functions'))
 
 %% test parameters
 m1 = 1;                 m2 = 1;
@@ -18,13 +19,13 @@ l_B_m3 = 0.25;          l_OA = 0.5;
 l_AB = 0.5;             l_BC = 0.5;
 g = 9.81; % do I want gravity to start?
 
-mb = 1; Ib = 0.5*mb*0.1^2;
+mb = 2; Ib = 0.5*mb*0.1^2;
 
 % arrange in vector
 p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g mb Ib]';
 
 % define object inertia
-mo = 2;
+mo = 1;
 LLo = mo*eye(2);
 
 %% test configuration
@@ -35,40 +36,16 @@ th3 = -0.7;
 
 q = [xb; yb; thb; th1; th2; th3];
 
-% %% evaluate H, J
-% H = H_arm_floating(q,p);
-% J = J_arm_floating(q,p);
-% Hbb = H(1:3,1:3);
-% Jb = J(:,1:3);
-% 
-% %% evaluate OSIMs
-% LL_inv = J/H*J';
-% LLf = inv(LL_inv);
-% LLfl_inv = Jb/Hbb*Jb';
-% LLfl = inv(LLfl_inv);
-% 
-% %% evaluate partial OSIM ratios
-% LLpf = (LLf+LLo)\LLf;
-% LLpfl = (LLfl+LLo)\LLfl;
-% 
-% %% evaluate metrics
-% Pvf = 2*(LLpfl-LLpf);
-% Pvo = (LLpfl/LLpf)-eye(2);
-% phi_vf = det(Pvf)
-% phi_vo = det(Pvo)
-% 
-% %% along a specified finger velocity direction
+% along a specified finger velocity direction
 vf = [0;-1];
-evf = vf/norm(vf);
-% nu_vf = evf'*Pvf*evf
 
 %% eval exit vel metrics
-[phi_vf, Pvf, nu_vf] = eval_exit_vel_metrics(q,p,LLo,evf)
+[phi_vf, Pvf, phi_vo, Pvo, phi_vol, Pvol] = eval_exit_vel_metrics(q,p,LLo);
 
 
 %% evaluate along a circle of unit directions for finger velocity?
 
-[V,D] = eig(Pvf);
+[V,D] = eig(Pvol);
 % using parametric equations of ellipse
 th_ellipse = atan2(V(2,1),V(1,1)); % angle between first eigenvector and positive x axis
 gamma_ell = 0.5; %/(max([D(1,1),D(2,2)])); % ellipse scaling
@@ -96,7 +73,7 @@ link2_angles = deg2rad( -180:20:180 );
 link3_angles = deg2rad( -90:20:90 );
 
 n = length(link1_angles)*length(link2_angles)*length(link3_angles);
-config_data = zeros(n,7); % matrix for output data
+config_data = zeros(n,10); % matrix for output data
 counter = 1;
 
 % for loops to iterate
@@ -109,40 +86,33 @@ for ii = 1:length(link1_angles)
 
             q_temp = [0, 0, 0, link1_temp, link2_temp, link3_temp]';
 
-            [phi_vf, ~, ~, phi_vo] = eval_exit_vel_metrics(q_temp,p,LLo,[0;0]);
+            [phi_vf, Pvf, phi_vo, Pvo, phi_vol, Pvol] = eval_exit_vel_metrics(q_temp,p,LLo);
             
             % evaluate H, J at q_temp
-            H = H_arm_floating(q_temp,p);
-            J = J_arm_floating(q_temp,p);
-%             Hbb = H(1:3,1:3);
-%             Jb = J(:,1:3);
+            Hf = H_arm_floating(q_temp,p);
+            Jf = J_arm_floating(q_temp,p);
 
             % evaluate OSIMs
-            LL_inv = J/H*J';
+            LL_inv = Jf/Hf*Jf';
             LLf = inv(LL_inv);
-%             LLfl_inv = Jb/Hbb*Jb';
-%             LLfl = inv(LLfl_inv);
-% 
-%             % evaluate partial OSIM ratios
-%             LLpf = (LLf+LLo)\LLf;
-%             LLpfl = (LLfl+LLo)\LLfl;
-% 
-%             % evaluate metrics
-%             Pvf = 2*(LLpfl-LLpf);
-%             Pvo = (LLpfl/LLpf)-eye(2);
-%             phi_vf = det(Pvf);
-%             phi_vo = det(Pvo);
             
             % generalized inertia ellipsoid
-            LL_fixed_base = eye(2);
-            gie_metric1 = cond(LLf); %cond(LL_fixed_base);
-            gie_metric2 = sqrt(det(LLf)); %sqrt( det(LL_fixed_base) );
+            gie1f = cond(LLf); 
+            gie2f = sqrt(det(LLf)); 
             
+            % evaluate fixed base
+            H = A_arm(q_temp(4:6),p);
+            J = jacobian_v_tip(q_temp(4:6),p);
+            LL_inv = J/H*J';
+            LL = inv(LL_inv);
+            gie1 = cond(LL);
+            gie2 = sqrt( det(LL) );
             
             % TODO: figure out what data I want to store at each configuration
             % store data
             config_data(counter,:) = [link1_temp; link2_temp; link3_temp; ...
-                                      phi_vf; phi_vo; gie_metric1; gie_metric2;];
+                                      phi_vf; phi_vo; phi_vol; 
+                                      gie1f; gie2f; gie1; gie2]';
             
             disp(counter);
             counter = counter + 1;
@@ -152,18 +122,20 @@ for ii = 1:length(link1_angles)
 end
 
 %% plot results over workspace
-figure(2); clf;
-scatter3(config_data(:,1),config_data(:,2),config_data(:,3),20,config_data(:,4),'filled');
-xlabel('q1'); ylabel('q2'); zlabel('q3');
-cb1 = colorbar; 
-title('|\Phi_{vf}|');
-figure(3); clf; 
-scatter3(config_data(:,1),config_data(:,2),config_data(:,3),20,config_data(:,5),'filled');
-xlabel('q1'); ylabel('q2'); zlabel('q3');
-cb2 = colorbar; 
-title('|\Phi_{vo}|');
+% figure(2); clf;
+% scatter3(config_data(:,1),config_data(:,2),config_data(:,3),20,config_data(:,4),'filled');
+% xlabel('q_1'); ylabel('q_2'); zlabel('q_3');
+% cb1 = colorbar; 
+% title('|\Phi_{vf}|');
+% figure(3); clf; 
+% scatter3(config_data(:,1),config_data(:,2),config_data(:,3),20,config_data(:,5),'filled');
+% xlabel('q_1'); ylabel('q_2'); zlabel('q_3');
+% cb2 = colorbar; 
+% title('|\Phi_{vo}|');
 figure(4); clf;
 scatter3(config_data(:,1),config_data(:,2),config_data(:,3),20,config_data(:,6),'filled');
-xlabel('q1'); ylabel('q2'); zlabel('q3');
+xlabel('q_1'); ylabel('q_2'); zlabel('q_3');
 cb3 = colorbar; 
-title('cond(LL)');
+str = sprintf('|\\Phi_{vol}| with m_o=%.1f and m_b=%.1f',mo,mb);
+title(str);
+

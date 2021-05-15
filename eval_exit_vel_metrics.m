@@ -1,4 +1,4 @@
-function [phi_vf, Pvf, nu_vf, phi_vo, Pvo] = eval_exit_vel_metrics(q,p,LLo,ev)
+function [phi_vf, Pvf, phi_vo, Pvo, phi_vol, Pvol] = eval_exit_vel_metrics(q,p,LLo) 
     % evaluate both exit velocity metrics at a given configuration
     % can also return the directional metric for a given finger velocity
 
@@ -26,10 +26,13 @@ function [phi_vf, Pvf, nu_vf, phi_vo, Pvo] = eval_exit_vel_metrics(q,p,LLo,ev)
     % evaluate metrics
     Pvf = 2*(LLpfl-LLpf);
     Pvo = (LLpfl/LLpf)-eye(2);
+    Pvol = eye(2)-(LLpf/LLpfl);
     phi_vf = det(Pvf);
     phi_vo = det(Pvo);
+    phi_vol = det(Pvol);
 
-    % along a specified finger velocity direction
-    nu_vf = ev'*Pvf*ev;
+%     % along a specified finger velocity direction
+%     vf = vf/norm(vf); % normalize
+%     nu_vf = vf'*Pvf*vf;
 
 end

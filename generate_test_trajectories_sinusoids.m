@@ -9,20 +9,29 @@
 
 %% Setup parameters
 
-N = 30; % number of trajectories
+N = 20; % number of trajectories
 
 % choose to discretize arena space, pick random points, rather than generate random coordinates 
 steps = 101;
-arena_x = linspace( 0.4, 1.2, steps);
-arena_y = linspace(-0.4, 0.4, steps);
 
-pt0_x_cands = linspace( 0.4, 0.9, steps); % restrict these so that trajectories end up inside arena?
-pt0_y_cands = linspace(-0.2, 0.2, steps);
+% arena_x = linspace( 0.4, 1.2, steps);
+% arena_y = linspace(-0.4, 0.4, steps);
+% pt0_x_cands = linspace( 0.4, 0.9, steps); % restrict these so that trajectories end up inside arena?
+% pt0_y_cands = linspace(-0.2, 0.2, steps);
+% sin_steps = 21;
+% amplitudes = linspace(0.1, 0.3, sin_steps);
+% periods = linspace(0.1,0.5, sin_steps);
+% thetas = linspace(-pi/2, pi/2, steps);
 
+% for MC and UR3 arms
+arena_x = linspace( 0.2, 0.5, steps);
+arena_y = linspace(-0.15, 0.15, steps);
+pt0_x_cands = linspace( 0.2, 0.35, steps); % restrict these so that trajectories end up inside arena?
+pt0_y_cands = linspace(-0.1, 0.1, steps);
 sin_steps = 21;
-amplitudes = linspace(0.1, 0.3, sin_steps);
-periods = linspace(0.1,0.5, sin_steps);
-thetas = linspace(-pi/2, pi/2, steps);
+amplitudes = linspace(0.025, 0.1, sin_steps);
+periods = linspace(0.1,0.2, sin_steps);
+thetas = linspace(-pi/4, pi/4, steps);
 
 trajectories = zeros(5,N); % each column is [x0;y0;T;a;th]
 num_pts = 51; % number of pts in trajectory
@@ -83,10 +92,11 @@ for ii=1:N
     plot(pts_plt(1,:),pts_plt(2,:),'-','LineWidth',1.5);
 end
 % plot arena
-x_a = [0.4, 1.2, 1.2, 0.4, 0.4];
-y_a = [-0.4, -0.4, 0.4, 0.4, -0.4];
+x_a = [arena_x(1), arena_x(end), arena_x(end), arena_x(1), arena_x(1)];
+y_a = [arena_y(1), arena_y(1), arena_y(end), arena_y(end), arena_y(1)];
 plot(x_a,y_a,'r--');
 axis equal;
-xlim([arena_x(1)-0.4,arena_x(end)+0.4]); ylim([arena_y(1)-0.4,arena_y(end)+0.4]);
+% xlim([arena_x(1)-0.4,arena_x(end)+0.4]); ylim([arena_y(1)-0.4,arena_y(end)+0.4]);
+xlim([arena_x(1)-0.1,arena_x(end)+0.1]); ylim([arena_y(1)-0.1,arena_y(end)+0.1]);
 xlabel('X'); ylabel('Y'); title('Randomly Generated Sinusoidal Trajectories');
 

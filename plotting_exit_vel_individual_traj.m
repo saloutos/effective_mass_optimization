@@ -1,7 +1,7 @@
-% plotting each TO output
+% plotting exit vel metrics for each TO output
 
 % Andrew SaLoutos
-% 4/17/2021
+% 5/5/2021
 
 % make sure functions are on path
 addpath(genpath('arm_functions'))
@@ -12,8 +12,13 @@ addpath(genpath('arm_floating_functions'));
 clear all
 
 % load data
-load('multi_traj_data_linear_ikp.mat');
-% load('multi_traj_data_sinusoid_ikp.mat');
+% load('multi_traj_data_linear_ikp.mat');
+load('multi_traj_data_sinusoid_ikp.mat');
+
+% make sure video filenames agree
+filename1 = 'Figures/figure_sinusoid_traj_ikp_exit_vel_metrics.avi';
+
+
 
 % each should contain TO_data_plain, TO_data_meff, TO_data_link3, and
 % TO_data_meff_link3
@@ -31,29 +36,30 @@ g = 9.81; % do I want gravity to start?
 % arrange in vector
 p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]';
 
-% define base parameters
-mb = 0; Ib = 0.5*mb*0.2^2;
-mb2 = 1; Ib2 = 0.5*mb2*0.2^2;
-
-pb = [p; mb; Ib];
-pb2 = [p; mb2; Ib2];
-
 % define object inertia
 mo = 1;
-
 LLo = mo*eye(2);
-LLo2 = mo*2*eye(2);
+
+% define base inertia
+mb = 2; Ib = 0.5*mb*0.1^2;
+pb = [p; mb; Ib];
 
 % iterate through each trajectory and plot
 N = size(TO_data_plain,2);
 m = length(TO_data_plain(1).time);
-exit_vel_data = zeros(12,m,N);
+exit_vel_data = zeros(16,m,N);
 
-exit_vel_data2 = zeros(12,m,N);
-
+% struct to save frames for video
+F1(N) = struct('cdata',[],'colormap',[]);
 
 for ii=1:N
     if ischar(TO_data_plain(ii).data) || ischar(TO_data_meff(ii).data) || ischar(TO_data_link3(ii).data) || ischar(TO_data_meff_link3(ii).data)
+        % bad TO outputs, just don't plot?
+        figure(1); clf;
+        plt_title = sprintf('Exit velocity metrics for trajectory #%d', ii);
+        sgtitle(plt_title);
+        % save figure as frame
+        F1(ii) = getframe(gcf);
         continue
     end
 
@@ -93,81 +99,154 @@ for ii=1:N
         ev_l3_temp = act_vels_l3(:,jj)/norm(act_vels_l3(:,jj));
         ev_m_l3_temp = act_vels_m_l3(:,jj)/norm(act_vels_m_l3(:,jj));
         
-        [phi_vf, Pvf, nu_vf, phi_vo, Pvo] = eval_exit_vel_metrics(q_temp,pb,LLo,ev_temp);
-        [phi_vf_m, Pvf_m, nu_vf_m, phi_vo_m, Pvo_m] = eval_exit_vel_metrics(q_m_temp,pb,LLo,ev_m_temp);
-        [phi_vf_l3, Pvf_l3, nu_vf_l3, phi_vo_l3, Pvo_l3] = eval_exit_vel_metrics(q_l3_temp,pb,LLo,ev_l3_temp);
-        [phi_vf_m_l3, Pvf_m_l3, nu_vf_m_l3, phi_vo_m_l3, Pvo_m_l3] = eval_exit_vel_metrics(q_m_l3_temp,pb,LLo,ev_m_l3_temp);
+        [phi_vf, Pvf, phi_vo, Pvo, phi_vol, Pvol] = eval_exit_vel_metrics(q_temp,pb,LLo);
+        [phi_vf_m, Pvf_m, phi_vo_m, Pvo_m, phi_vol_m, Pvol_m] = eval_exit_vel_metrics(q_m_temp,pb,LLo);
+        [phi_vf_l3, Pvf_l3, phi_vo_l3, Pvo_l3, phi_vol_l3, Pvol_l3] = eval_exit_vel_metrics(q_l3_temp,pb,LLo);
+        [phi_vf_m_l3, Pvf_m_l3, phi_vo_m_l3, Pvo_m_l3, phi_vol_m_l3, Pvol_m_l3] = eval_exit_vel_metrics(q_m_l3_temp,pb,LLo);
         
-        exit_vel_data(:,jj,ii) = [phi_vf; phi_vf_m; phi_vf_l3; phi_vf_m_l3; ...
-                                  nu_vf; nu_vf_m; nu_vf_l3; nu_vf_m_l3; ...
-                                  phi_vo; phi_vo_m; phi_vo_l3; phi_vo_m_l3];
-          
-        % using second set of inertial parameters...  
-        [phi_vf, Pvf, nu_vf, phi_vo, Pvo] = eval_exit_vel_metrics(q_temp,pb2,LLo,ev_temp);
-        [phi_vf_m, Pvf_m, nu_vf_m, phi_vo_m, Pvo_m] = eval_exit_vel_metrics(q_m_temp,pb2,LLo,ev_m_temp);
-        [phi_vf_l3, Pvf_l3, nu_vf_l3, phi_vo_l3, Pvo_l3] = eval_exit_vel_metrics(q_l3_temp,pb2,LLo,ev_l3_temp);
-        [phi_vf_m_l3, Pvf_m_l3, nu_vf_m_l3, phi_vo_m_l3, Pvo_m_l3] = eval_exit_vel_metrics(q_m_l3_temp,pb2,LLo,ev_m_l3_temp);
+        % get directional value, only for Pvol
+        eta_vol = ev_temp'*Pvol*ev_temp;
+        eta_vol_m = ev_m_temp'*Pvol_m*ev_m_temp;
+        eta_vol_l3 = ev_l3_temp'*Pvol_l3*ev_l3_temp;
+        eta_vol_m_l3 = ev_m_l3_temp'*Pvol_m_l3*ev_m_l3_temp;
         
-        exit_vel_data2(:,jj,ii) = [phi_vf; phi_vf_m; phi_vf_l3; phi_vf_m_l3; ...
-                                   nu_vf; nu_vf_m; nu_vf_l3; nu_vf_m_l3; ...
-                                   phi_vo; phi_vo_m; phi_vo_l3; phi_vo_m_l3];
+        % get maximum and minimum eta_vol
+        [V,D] = eig(Pvol);
+        ax_lengths = [sqrt(D(1,1)),sqrt(D(2,2))];
+        eta_max = max(ax_lengths);
+        eta_min = min(ax_lengths);
+        [V,D] = eig(Pvol_m);
+        ax_lengths = [sqrt(D(1,1)),sqrt(D(2,2))];
+        eta_max_m = max(ax_lengths);
+        eta_min_m = min(ax_lengths);
+        [V,D] = eig(Pvol_l3);
+        ax_lengths = [sqrt(D(1,1)),sqrt(D(2,2))];
+        eta_max_l3 = max(ax_lengths);
+        eta_min_l3 = min(ax_lengths);
+        [V,D] = eig(Pvol_m_l3);
+        ax_lengths = [sqrt(D(1,1)),sqrt(D(2,2))];
+        eta_max_m_l3 = max(ax_lengths);
+        eta_min_m_l3 = min(ax_lengths);
+        
+        exit_vel_data(:,jj,ii) = [phi_vol; phi_vol_m; phi_vol_l3; phi_vol_m_l3; ...
+                                  eta_vol; eta_vol_m; eta_vol_l3; eta_vol_m_l3; ...
+                                  eta_max; eta_max_m; eta_max_l3; eta_max_m_l3; ...
+                                  eta_min; eta_min_m; eta_min_l3; eta_min_m_l3];
                               
                       
-    end   
-end
-
-%% plot?
-figure(1);
-for ii=1:N
+    end 
     
+    % plot
     data = exit_vel_data(:,:,ii);
     time_vec = TO_data_plain(ii).time;
     
-    clf; 
+    figure(1); clf;     
     
-    data2 = exit_vel_data2(:,:,ii);
-    
-    subplot(1,2,1); hold on;
+    subplot(1,4,1); hold on;
     plot(time_vec, data(1,:)); plot(time_vec, data(2,:));
     plot(time_vec, data(3,:)); plot(time_vec, data(4,:));
-    xlabel('Time'); ylabel('Metric');
+    xlabel('Time'); ylabel('Metric'); ylim([0, 1.0]);
     legend('plain','meff','link3','both');
-    title('\phi_{vf}');
+    title('\phi_{vol}');
     
-    subplot(1,2,2); hold on;
-    plot(time_vec, data2(1,:)); plot(time_vec, data2(2,:));
-    plot(time_vec, data2(3,:)); plot(time_vec, data2(4,:));
-    xlabel('Time'); ylabel('Metric');
-    legend('plain','meff','link3','both');
-    title('\phi_{vf},2');
+    subplot(1,4,2); hold on;
+    plot(time_vec, data(5,:)); plot(time_vec, data(6,:));
+    plot(time_vec, data(7,:)); plot(time_vec, data(8,:));
+    xlabel('Time'); ylabel('Metric'); ylim([0, 1.0]);
+%     legend('plain','meff','link3','both');
+    title('\eta_{vol}');
     
+    subplot(1,4,3); hold on;
+    plot(time_vec, data(9,:)); plot(time_vec, data(10,:));
+    plot(time_vec, data(11,:)); plot(time_vec, data(12,:));
+    xlabel('Time'); ylabel('Metric'); ylim([0, 1.0]);
+%     legend('plain','meff','link3','both');
+    title('\eta_{max}');
     
-%     subplot(1,3,1); hold on;
-%     plot(time_vec, data(1,:)); plot(time_vec, data(2,:));
-%     plot(time_vec, data(3,:)); plot(time_vec, data(4,:));
-%     xlabel('Time'); ylabel('Metric');
+    subplot(1,4,4); hold on;
+    plot(time_vec, data(13,:)); plot(time_vec, data(14,:));
+    plot(time_vec, data(15,:)); plot(time_vec, data(16,:));
+    xlabel('Time'); ylabel('Metric'); ylim([0, 1.0]);
 %     legend('plain','meff','link3','both');
-%     title('\phi_{vf}');
-%     
-%     subplot(1,3,2); hold on;
-%     plot(time_vec, data(5,:)); plot(time_vec, data(6,:));
-%     plot(time_vec, data(7,:)); plot(time_vec, data(8,:));
-%     xlabel('Time'); ylabel('Metric');
-%     legend('plain','meff','link3','both');
-%     title('\eta_{vf}');
-%     
-%     subplot(1,3,3); hold on;
-%     plot(time_vec, data(9,:)); plot(time_vec, data(10,:));
-%     plot(time_vec, data(11,:)); plot(time_vec, data(12,:));
-%     xlabel('Time'); ylabel('Metric');
-%     legend('plain','meff','link3','both');
-%     title('\phi_{vo}');
-
+    title('\eta_{min}');
+    
     plt_title = sprintf('Exit velocity metrics for trajectory #%d', ii);
     sgtitle(plt_title);
     
-    pause;
+    % save figure as frame
+    F1(ii) = getframe(gcf);
+    
+%     pause;
+    
+    
 end
+
+% %% plot?
+% figure(1);
+% for ii=1:N
+%     
+%     data = exit_vel_data(:,:,ii);
+%     time_vec = TO_data_plain(ii).time;
+%     
+%     clf;     
+%     
+%     subplot(1,4,1); hold on;
+%     plot(time_vec, data(1,:)); plot(time_vec, data(2,:));
+%     plot(time_vec, data(3,:)); plot(time_vec, data(4,:));
+%     xlabel('Time'); ylabel('Metric'); ylim([0, 1.0]);
+%     legend('plain','meff','link3','both');
+%     title('\phi_{vol}');
+%     
+%     subplot(1,4,2); hold on;
+%     plot(time_vec, data(5,:)); plot(time_vec, data(6,:));
+%     plot(time_vec, data(7,:)); plot(time_vec, data(8,:));
+%     xlabel('Time'); ylabel('Metric'); ylim([0, 1.0]);
+% %     legend('plain','meff','link3','both');
+%     title('\eta_{vol}');
+%     
+%     subplot(1,4,3); hold on;
+%     plot(time_vec, data(9,:)); plot(time_vec, data(10,:));
+%     plot(time_vec, data(11,:)); plot(time_vec, data(12,:));
+%     xlabel('Time'); ylabel('Metric'); ylim([0, 1.0]);
+% %     legend('plain','meff','link3','both');
+%     title('\eta_{max}');
+%     
+%     subplot(1,4,4); hold on;
+%     plot(time_vec, data(13,:)); plot(time_vec, data(14,:));
+%     plot(time_vec, data(15,:)); plot(time_vec, data(16,:));
+%     xlabel('Time'); ylabel('Metric'); ylim([0, 1.0]);
+% %     legend('plain','meff','link3','both');
+%     title('\eta_{min}');
+%     
+%     plt_title = sprintf('Exit velocity metrics for trajectory #%d', ii);
+%     sgtitle(plt_title);
+%     
+%     pause;
+% end
+
+% write videos here
+disp('Writing videos...');
+
+v1 = VideoWriter(filename1);
+v1.FrameRate = 30; % optional: control frame rate
+open(v1)
+for ii=1:N % for each trajectory
+    for jj=1:60 % write 60 frames (two seconds) to video
+        writeVideo(v1,F1(ii));
+    end
+end
+close(v1)
+
+disp('...done!');
+
+
+
+
+
+
+
+
+
 
 
 
