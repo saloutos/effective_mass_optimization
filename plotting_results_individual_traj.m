@@ -7,24 +7,24 @@
 % addpath(genpath('arm_functions'))
 addpath(genpath('block_functions'))
 
-% addpath(genpath('mc_arm_functions'))
-addpath(genpath('UR3_arm_functions'))
+addpath(genpath('mc_arm_functions'))
+% addpath(genpath('UR3_arm_functions'))
 
 % import trajectory data
 clear all
 
 % load data
 % load('multi_traj_data_linear.mat');
-% load('multi_traj_data_linear_MC.mat');
-% load('multi_traj_data_linear_UR3.mat');
+load('multi_traj_data_linear_MC_2.mat');
+% load('multi_traj_data_linear_UR3_2.mat');
 
 % load('multi_traj_data_sinusoid.mat');
-% load('multi_traj_data_sinusoid_MC.mat');
-load('multi_traj_data_sinusoid_UR3.mat');
+% load('multi_traj_data_sinusoid_MC_2.mat');
+% load('multi_traj_data_sinusoid_UR3.mat');
 
 % make sure video filenames agree
-filename1 = 'Figures/figure1_sinusoid_traj_UR3.avi';
-filename2 = 'Figures/figure2_sinusoid_traj_UR3.avi';
+filename1 = 'Figures/figure1_linear_traj_MC_2.avi';
+filename2 = 'Figures/figure2_linear_traj_MC_2.avi';
 
 % each should contain TO_data_plain, TO_data_meff, TO_data_link3, and
 % TO_data_meff_link3
@@ -42,31 +42,31 @@ filename2 = 'Figures/figure2_sinusoid_traj_UR3.avi';
 % % arrange in vector
 % p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]';
 
-% % MC arm
-% m1 = 0.195;             m2 = 0.262;
-% m3 = 0.053;             m_motor = 0.527;
-% I1 = 0.001170;          I2 = 0.001186;
-% I3 = 0.000096;          I_motor = 0.000508;
-% Ir = 0.000064;          N = 6;
-% l_O_m1 = 0.092;         l_A_m2 = 0.201;
-% l_B_m3 = 0.038;         l_OA = 0.2085;
-% l_AB = 0.265;           l_BC = 0.1225;
-% g = 9.81; % do I want gravity to start?
-% % parameters
-% p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
-
-% UR3 planar arm
-m1 = 3.4445;            m2 = 1.437;
-m3 = 1.9360;            m_motor = 0.0; % not using motor mass
-I1 = 0.0219;            I2 = 0.0075;
-I3 = 0.0064;            I_motor = 0.0; % not using motor inertia
-Ir = 2.07e-5;           N = 101;
-l_O_m1 = 0.113;         l_A_m2 = 0.163;
-l_B_m3 = 0.0470;        l_OA = 0.24355;
-l_AB = 0.2132;          l_BC = 0.08535;
+% MC arm
+m1 = 0.195;             m2 = 0.262;
+m3 = 0.053;             m_motor = 0.527;
+I1 = 0.001170;          I2 = 0.001186;
+I3 = 0.000096;          I_motor = 0.000508;
+Ir = 0.000064;          N = 6;
+l_O_m1 = 0.092;         l_A_m2 = 0.201;
+l_B_m3 = 0.038;         l_OA = 0.2085;
+l_AB = 0.265;           l_BC = 0.1225;
 g = 9.81; % do I want gravity to start?
 % parameters
 p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
+
+% % UR3 planar arm
+% m1 = 3.4445;            m2 = 1.437;
+% m3 = 1.9360;            m_motor = 0.0; % not using motor mass
+% I1 = 0.0219;            I2 = 0.0075;
+% I3 = 0.0064;            I_motor = 0.0; % not using motor inertia
+% Ir = 2.07e-5;           N = 101;
+% l_O_m1 = 0.113;         l_A_m2 = 0.163;
+% l_B_m3 = 0.0470;        l_OA = 0.24355;
+% l_AB = 0.2132;          l_BC = 0.08535;
+% g = 9.81; % do I want gravity to start?
+% % parameters
+% p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
 
 % define object parameters
 mo = 1;
@@ -144,22 +144,46 @@ for ii=1:N
         
         v_temp = X.v(1:2,jj);
         LLv_temp = reshape(LLv(:,jj),2,2);
-        ex_vel_temp = 2*inv(LLv_temp+LLo)*LLv_temp*v_temp;
+%         ex_vel_temp = 2*inv(LLv_temp+LLo)*LLv_temp*v_temp;
+        
+        LLv_inv_temp = inv(LLv_temp);
+        u_temp = v_temp/norm(v_temp);
+        mf_temp = 1/(u_temp'*LLv_inv_temp*u_temp);
+        ex_vel_temp = 2*(mf_temp/(mf_temp+mo))*v_temp;  
+        
         exit_vel(:,jj) = [ex_vel_temp; norm(ex_vel_temp)];
         
         v_temp = X_m.v(1:2,jj);
         LLv_temp = reshape(LLv_m(:,jj),2,2);
-        ex_vel_temp = 2*inv(LLv_temp+LLo)*LLv_temp*v_temp;
+%         ex_vel_temp = 2*inv(LLv_temp+LLo)*LLv_temp*v_temp;
+        
+        LLv_inv_temp = inv(LLv_temp);
+        u_temp = v_temp/norm(v_temp);
+        mf_temp = 1/(u_temp'*LLv_inv_temp*u_temp);
+        ex_vel_temp = 2*(mf_temp/(mf_temp+mo))*v_temp;  
+        
         exit_vel_m(:,jj) = [ex_vel_temp; norm(ex_vel_temp)];
         
         v_temp = X_l3.v(1:2,jj);
         LLv_temp = reshape(LLv_l3(:,jj),2,2);
-        ex_vel_temp = 2*inv(LLv_temp+LLo)*LLv_temp*v_temp;
+%         ex_vel_temp = 2*inv(LLv_temp+LLo)*LLv_temp*v_temp;
+        
+        LLv_inv_temp = inv(LLv_temp);
+        u_temp = v_temp/norm(v_temp);
+        mf_temp = 1/(u_temp'*LLv_inv_temp*u_temp);
+        ex_vel_temp = 2*(mf_temp/(mf_temp+mo))*v_temp;  
+        
         exit_vel_l3(:,jj) = [ex_vel_temp; norm(ex_vel_temp)];
         
         v_temp = X_m_l3.v(1:2,jj);
         LLv_temp = reshape(LLv_m_l3(:,jj),2,2);
-        ex_vel_temp = 2*inv(LLv_temp+LLo)*LLv_temp*v_temp;
+%         ex_vel_temp = 2*inv(LLv_temp+LLo)*LLv_temp*v_temp;
+        
+        LLv_inv_temp = inv(LLv_temp);
+        u_temp = v_temp/norm(v_temp);
+        mf_temp = 1/(u_temp'*LLv_inv_temp*u_temp);
+        ex_vel_temp = 2*(mf_temp/(mf_temp+mo))*v_temp;  
+        
         exit_vel_m_l3(:,jj) = [ex_vel_temp; norm(ex_vel_temp)];
         
     end
@@ -223,9 +247,9 @@ for ii=1:N
     xlabel('Time'); ylabel('m_{eff}'); 
 %     legend('Actual','Min','Max');
     legend({'TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both'},'FontSize',6);
-    ylim([0, 1.5]);
+    ylim([0, 1.0]);
     title('Effective Mass');
-    ylim([0, 30]); % for UR3
+%     ylim([0, 30]); % for UR3
     
     % plot norm of exit velocity over time
     subplot(2,2,4); hold on;
@@ -270,8 +294,8 @@ for ii=1:N
     
     
     % stop between each trajectory?
-%     pause(0.5);
-    pause;
+    pause(0.5);
+%     pause;
     % TODO: make this a timed pause and record the animation as a video?
     
 end

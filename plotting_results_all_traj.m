@@ -15,12 +15,12 @@ clear all
 
 % load data
 % load('multi_traj_data_linear.mat');
-% load('multi_traj_data_linear_MC.mat');
-% load('multi_traj_data_linear_UR3.mat');
+% load('multi_traj_data_linear_MC_2.mat');
+% load('multi_traj_data_linear_UR3_2.mat');
 
 % load('multi_traj_data_sinusoid.mat');
-% load('multi_traj_data_sinusoid_MC.mat');
-load('multi_traj_data_sinusoid_UR3.mat');
+% load('multi_traj_data_sinusoid_MC_2.mat');
+load('multi_traj_data_sinusoid_UR3_2.mat');
 
 % each should contain TO_data_plain, TO_data_meff, TO_data_link3, and
 % TO_data_meff_link3
@@ -38,7 +38,7 @@ load('multi_traj_data_sinusoid_UR3.mat');
 % % arrange in vector
 % p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]';
 
-% % MC arm
+% MC arm
 % m1 = 0.195;             m2 = 0.262;
 % m3 = 0.053;             m_motor = 0.527;
 % I1 = 0.001170;          I2 = 0.001186;
@@ -51,7 +51,7 @@ load('multi_traj_data_sinusoid_UR3.mat');
 % % parameters
 % p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
 
-% UR3 planar arm
+% % UR3 planar arm
 m1 = 3.4445;            m2 = 1.437;
 m3 = 1.9360;            m_motor = 0.0; % not using motor mass
 I1 = 0.0219;            I2 = 0.0075;
@@ -65,10 +65,8 @@ g = 9.81; % do I want gravity to start?
 p   = [m1 m2 m3 m_motor I1 I2 I3 I_motor Ir N l_O_m1 l_A_m2 l_B_m3 l_OA l_AB l_BC g]'; 
 
 % define object parameters
-mo = 1;
+mo = 20.0; %1.0;
 LLo = mo*eye(2);
-
-
 
 % iterate through each trajectory and compile quantities
 N = size(TO_data_plain,2);
@@ -128,10 +126,22 @@ for ii=1:4 % for each cost function
         for kk=1:length(v_error)
             v_temp = TO_data(jj).data.v(1:2,kk);       
             LLv_temp = reshape(TO_data(jj).data.LLv(:,kk),2,2);
-            ex_vel_temp = 2*inv(LLv_temp+LLo)*LLv_temp*v_temp;
+            
+            LLv_inv_temp = inv(LLv_temp);
+            if (norm(v_temp)>1e-6)
+                u_temp = v_temp/norm(v_temp);
+                mf_temp = 1/(u_temp'*LLv_inv_temp*u_temp);
+            else 
+                mf_temp = 0;
+            end
+            ex_vel_temp = 2*(mf_temp/(mf_temp+mo))*v_temp;  
+            
+%             ex_vel_temp = 2*inv(LLv_temp+LLo)*LLv_temp*v_temp;
             exit_vels(:,kk) = [ex_vel_temp; norm(ex_vel_temp)];
+            
         end
         avg_exit_vel(ii,jj) = mean(exit_vels(3,:));
+        
         
         if (ii==1)
             exit_vel_data(:,:,jj) = exit_vels;
@@ -147,6 +157,8 @@ for ii=1:4 % for each cost function
        
     end    
 end
+
+avg_exit_vel
 
 % calculate ratios for effective mass? each cost function over the plain TO
 % can use avg(meff1)/avg(meff2) or avg( meff1[i]/meff2[i] )
@@ -227,22 +239,19 @@ summary_data_err(:,4) = nanmean(avg_v_error,2);
 summary_data_err(:,5) = min(avg_v_error,[],2);
 summary_data_err(:,6) = max(avg_v_error,[],2);
 
-
-
-
-
 % display data for comparison
 % summary_data
 % summary_data_err
 
-% plot quantities
+%% plot quantities
 figure(3); clf; hold on;
 plot(solve_times(1,:),'o-'); plot(solve_times(2,:),'o-');
 plot(solve_times(3,:),'o-'); plot(solve_times(4,:),'o-');
 plot(ones(1,N),'r--');
-xlabel('Traj #'); ylabel('Solve Time');
-legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+xlabel('Traj #'); ylabel('Solve Time (s)');
+legend({'TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both'},'Location','northwest');
 title('Optimization Solve Times for Random Trajectories');
+% ylim([0,5]);
 
 figure(4); clf;
 subplot(2,3,1); hold on;
@@ -253,15 +262,16 @@ plot(ones(1,N),'r--');
 xlabel('Traj #'); ylabel('m_{eff} Ratio');
 legend('TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
 title('Ratio of m_{eff} to Plain TO');
-
-subplot(2,3,4); hold on;
-plot(avg_meff(1,:)); plot(avg_meff(2,:));
-plot(avg_meff(3,:)); plot(avg_meff(4,:));
-xlabel('Traj #'); ylabel('Mean m_{eff}'); 
-legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
-title('Average m_{eff}');
+ylim([0,3]);
 
 subplot(2,3,2); hold on;
+plot(avg_meff(1,:)); plot(avg_meff(2,:));
+plot(avg_meff(3,:)); plot(avg_meff(4,:));
+xlabel('Traj #'); ylabel('Mean m_{eff} (kg)'); 
+legend({'TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both'},'Location','northwest');
+title('Average m_{eff}');
+
+subplot(2,3,4); hold on;
 plot(exit_vel_ratios(1,:));
 plot(exit_vel_ratios(2,:));
 plot(exit_vel_ratios(3,:));
@@ -269,26 +279,27 @@ plot(ones(1,N),'r--');
 xlabel('Traj #'); ylabel('||v_{exit}|| Ratio');
 legend('TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
 title('Ratio of ||v_{exit}|| to Plain TO');
+ylim([0,3]);
 
 subplot(2,3,5); hold on;
 plot(avg_exit_vel(1,:)); plot(avg_exit_vel(2,:));
 plot(avg_exit_vel(3,:)); plot(avg_exit_vel(4,:));
-xlabel('Traj #'); ylabel('Mean ||v_{exit}||'); 
-legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+xlabel('Traj #'); ylabel('Mean ||v_{exit}|| (m/s)'); 
+% legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
 title('Average ||v_{exit}||');
 
 subplot(2,3,3); hold on;
 plot(avg_p_error(1,:)); plot(avg_p_error(2,:));
 plot(avg_p_error(3,:)); plot(avg_p_error(4,:));
-xlabel('Traj #'); ylabel('Mean p_{err}'); 
-legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+xlabel('Traj #'); ylabel('Mean p_{err} (m)'); 
+% legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
 title('Average Position Tracking Error');
 
 subplot(2,3,6); hold on;
 plot(avg_v_error(1,:)); plot(avg_v_error(2,:));
 plot(avg_v_error(3,:)); plot(avg_v_error(4,:));
-xlabel('Traj #'); ylabel('Mean v_{err}'); 
-legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
+xlabel('Traj #'); ylabel('Mean v_{err} (m/s)'); 
+% legend('TO plain', 'TO w/ m_{eff}', 'TO w/ link3', 'TO w/ both');
 title('Average Velocity Tracking Error');
 
 sgtitle('Comparing TO Performance Across Random Trajectories');
@@ -369,6 +380,10 @@ xticklabels({'5','10','15','20'}); %,'25','30'});
 title('Solve Times');
 
 % outliers make this difficult to accurately represent results
+
+
+
+
 
 
 
